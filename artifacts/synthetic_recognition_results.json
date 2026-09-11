@@ -64,9 +64,9 @@
           "support": 221.0
         }
       },
-      "serialized_bytes": 6247,
-      "median_latency_ms_per_window": 0.0007075407242097436,
-      "p95_latency_ms_per_window": 0.0009548015838528576
+      "serialized_bytes": 6894,
+      "median_latency_ms_per_window": 0.001220506787810678,
+      "p95_latency_ms_per_window": 0.001519326471527692
     },
     "compact_rf": {
       "accuracy": 1.0,
@@ -129,9 +129,9 @@
           "support": 221.0
         }
       },
-      "serialized_bytes": 178168,
-      "median_latency_ms_per_window": 0.1397333438912876,
-      "p95_latency_ms_per_window": 0.1681581843891511
+      "serialized_bytes": 178952,
+      "median_latency_ms_per_window": 0.1429762647054238,
+      "p95_latency_ms_per_window": 0.15203421628947625
     },
     "full_rf": {
       "accuracy": 1.0,
@@ -194,9 +194,9 @@
           "support": 221.0
         }
       },
-      "serialized_bytes": 661701,
-      "median_latency_ms_per_window": 0.4213491131220228,
-      "p95_latency_ms_per_window": 0.4301131493213495
+      "serialized_bytes": 662485,
+      "median_latency_ms_per_window": 0.38475608144893475,
+      "p95_latency_ms_per_window": 0.42581646470552603
     }
   },
   "recognition_test": {

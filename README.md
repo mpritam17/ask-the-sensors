@@ -89,7 +89,8 @@ Transformers, and Accelerate are optional and needed only for the Qwen Task 4 pa
 - Preprocessing, feature extraction, three recognizers, timeline aggregation, Tasks
   1-3, grounded Task 4 fallback/Qwen validation, evaluation, figures, and efficiency
   benchmarking are implemented.
-- `pytest -q` currently passes 38 tests, including an end-to-end CLI test.
+- `pytest -q` currently passes 44 tests, including end-to-end CLI, downloader-recovery,
+  official-schema, preliminary-report-contract, and grounded-output checks.
 - Saved synthetic smoke-test outputs are under `artifacts/` and
   `report/figures/synthetic/`; all are explicitly stamped synthetic.
 - Real ExtraSensory training/evaluation and the Qwen weight run remain pending. The

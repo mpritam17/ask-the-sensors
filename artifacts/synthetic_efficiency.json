@@ -1,7 +1,7 @@
 {
   "dataset_kind": "synthetic",
   "artifact": {
-    "model_disk_bytes": 27243,
+    "model_disk_bytes": 27939,
     "model_parameter_or_tree_node_count": 1260,
     "processor": "x86_64",
     "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.43",
@@ -10,17 +10,23 @@
   "recognition_batch": {
     "runs": 30,
     "warmup_runs": 5,
-    "median_latency_ms": 44.569260999992366,
-    "p95_latency_ms": 45.571217400015485,
-    "peak_python_memory_mb": 1.0546045303344727,
+    "median_latency_ms": 42.95984749978743,
+    "p95_latency_ms": 44.13813639989712,
+    "peak_python_memory_mb": 1.1431093215942383,
+    "process_cpu_seconds": 1.101317482999999,
+    "logical_processors": 32,
+    "cpu_utilization_percent_of_machine": 2.691491808249203,
     "windows_per_run": 222
   },
   "tasks_1_3_batch": {
     "runs": 30,
     "warmup_runs": 5,
-    "median_latency_ms": 0.05328600002485473,
-    "p95_latency_ms": 0.0841602000377861,
-    "peak_python_memory_mb": 0.0018892288208007812,
+    "median_latency_ms": 0.08111900001495087,
+    "p95_latency_ms": 0.10651054994923469,
+    "peak_python_memory_mb": 0.0022630691528320312,
+    "process_cpu_seconds": 0.00254018100000053,
+    "logical_processors": 32,
+    "cpu_utilization_percent_of_machine": 3.153324518473414,
     "questions_per_run": 4
   },
   "task_4": {

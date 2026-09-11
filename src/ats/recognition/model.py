@@ -13,6 +13,7 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, classification_report, f1_score
+from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -25,6 +26,7 @@ def make_candidates(config: Mapping[str, object], seed: int) -> Dict[str, object
     candidates = config["candidates"]
     return {
         "logistic": Pipeline([
+            ("impute", SimpleImputer(strategy="median")),
             ("scale", StandardScaler()),
             ("model", LogisticRegression(
                 max_iter=int(candidates["logistic"]["max_iter"]),
@@ -32,20 +34,26 @@ def make_candidates(config: Mapping[str, object], seed: int) -> Dict[str, object
                 random_state=seed,
             )),
         ]),
-        "compact_rf": RandomForestClassifier(
-            n_estimators=int(candidates["compact_rf"]["n_estimators"]),
-            max_depth=int(candidates["compact_rf"]["max_depth"]),
-            class_weight="balanced_subsample",
-            random_state=seed,
-            n_jobs=-1,
-        ),
-        "full_rf": RandomForestClassifier(
-            n_estimators=int(candidates["full_rf"]["n_estimators"]),
-            max_depth=int(candidates["full_rf"]["max_depth"]),
-            class_weight="balanced_subsample",
-            random_state=seed,
-            n_jobs=-1,
-        ),
+        "compact_rf": Pipeline([
+            ("impute", SimpleImputer(strategy="median")),
+            ("model", RandomForestClassifier(
+                n_estimators=int(candidates["compact_rf"]["n_estimators"]),
+                max_depth=int(candidates["compact_rf"]["max_depth"]),
+                class_weight="balanced_subsample",
+                random_state=seed,
+                n_jobs=-1,
+            )),
+        ]),
+        "full_rf": Pipeline([
+            ("impute", SimpleImputer(strategy="median")),
+            ("model", RandomForestClassifier(
+                n_estimators=int(candidates["full_rf"]["n_estimators"]),
+                max_depth=int(candidates["full_rf"]["max_depth"]),
+                class_weight="balanced_subsample",
+                random_state=seed,
+                n_jobs=-1,
+            )),
+        ]),
     }
 
 
@@ -74,6 +82,9 @@ def train_and_select(
     classes: List[str],
     config: Mapping[str, object],
     dataset_kind: str,
+    schema: List[str] | None = None,
+    provenance: List[Mapping[str, object]] | None = None,
+    feature_source: str = "engineered_windows",
 ) -> Tuple[Dict[str, object], Dict[str, Dict[str, object]]]:
     seed = int(config["random_seed"])
     results: Dict[str, Dict[str, object]] = {}
@@ -102,7 +113,8 @@ def train_and_select(
         if float(values["macro_f1"]) >= best_score - tolerance
     ]
     selected = min(eligible, key=lambda name: int(results[name]["serialized_bytes"]))
-    schema = feature_names()
+    schema = list(schema or feature_names())
+    provenance = list(provenance or feature_provenance(schema))
     config_json = json.dumps(dict(config), sort_keys=True, separators=(",", ":"))
     bundle = {
         "bundle_version": BUNDLE_VERSION,
@@ -110,7 +122,8 @@ def train_and_select(
         "selected_model": selected,
         "classes": list(classes),
         "feature_names": schema,
-        "feature_provenance": feature_provenance(schema),
+        "feature_provenance": provenance,
+        "feature_source": feature_source,
         "config_sha256": hashlib.sha256(config_json.encode("utf-8")).hexdigest(),
         "dataset_kind": dataset_kind,
         "validation_metrics": results[selected],
@@ -129,7 +142,7 @@ def load_bundle(path: Path) -> Dict[str, object]:
     bundle = joblib.load(path)
     if bundle.get("bundle_version") != BUNDLE_VERSION:
         raise ValueError(f"unsupported recognizer bundle version: {bundle.get('bundle_version')}")
-    if list(bundle.get("feature_names", [])) != feature_names():
+    if bundle.get("feature_source", "engineered_windows") == "engineered_windows" and list(bundle.get("feature_names", [])) != feature_names():
         raise ValueError("recognizer feature schema does not match this source version")
     return bundle
 

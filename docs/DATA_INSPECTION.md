@@ -27,9 +27,33 @@ assumptions that still require the large sensor archives.
 These are inspection counts for one user, not recognition or QA results. The
 inspection revealed and prompted the `original_label:` normalization fix.
 
+## Full original-label archive - verified 2026-09-12
+
+`scripts/summarize_official_labels.py` parsed all 60 official per-user files.
+Before the cleaned-label contradiction filter is available, the archive has
+377,346 examples, of which 307,220 (81.4%) contain exactly one target main
+activity. The remaining 70,126 have no target main activity; no multi-main
+examples were observed.
+
+| Class | Original-label examples |
+|---|---:|
+| lying_down | 104,210 |
+| sitting | 136,356 |
+| standing_in_place | 8,028 |
+| standing_and_moving | 29,754 |
+| walking | 22,517 |
+| running | 1,335 |
+| bicycling | 5,020 |
+
+These are real metadata counts, not recognition results. They show a roughly
+102:1 sitting-to-running imbalance and motivate macro-F1, balanced accuracy,
+class weighting, and per-user sampling caps.
+
 ## Still pending
 
-- Cleaned-label contradiction counts, once `features_labels` finishes.
+- Cleaned-label contradiction counts; the aggregate JSON currently records
+  `users_with_cleaned_consistency_filter: 0` and will be regenerated once
+  `features_labels` finishes.
 - Raw accelerometer/gyroscope nesting, column count, timestamp units, sample
   rate, accelerometer units, missing-modality rate, and coverage statistics.
 - Full per-user/class build manifest and the official-fold mapping.

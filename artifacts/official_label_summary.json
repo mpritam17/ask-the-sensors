@@ -1,0 +1,21 @@
+{
+  "dataset_kind": "real",
+  "source": "official ExtraSensory per-user metadata",
+  "users": 60,
+  "users_with_cleaned_consistency_filter": 0,
+  "total_examples": 377346,
+  "retained_examples": 307220,
+  "retained_fraction": 0.8141599486943017,
+  "class_counts": {
+    "lying_down": 104210,
+    "sitting": 136356,
+    "standing_in_place": 8028,
+    "standing_and_moving": 29754,
+    "walking": 22517,
+    "running": 1335,
+    "bicycling": 5020
+  },
+  "drop_reasons": {
+    "no_main_activity": 70126
+  }
+}

@@ -24,8 +24,10 @@ from ats.config import Config, load_config
 
 
 def normalise_column(name: str) -> str:
-    """'label:FIX_walking' -> 'FIX_WALKING'; 'DRIVE_-_I_M_THE_DRIVER' -> same."""
-    name = re.sub(r"^label:", "", str(name).strip(), flags=re.IGNORECASE)
+    """Strip cleaned/original prefixes and normalize punctuation/case."""
+    name = re.sub(
+        r"^(?:original_)?label:", "", str(name).strip(), flags=re.IGNORECASE
+    )
     return re.sub(r"[^0-9A-Za-z]+", "_", name).strip("_").upper()
 
 

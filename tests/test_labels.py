@@ -20,6 +20,7 @@ def _write(tmp_path, name, frame):
 
 def test_normalise_column_strips_prefix_and_punctuation():
     assert normalise_column("label:FIX_walking") == "FIX_WALKING"
+    assert normalise_column("original_label:STANDING_IN_PLACE") == "STANDING_IN_PLACE"
     assert normalise_column("label:DRIVE_-_I_M_THE_DRIVER") == "DRIVE_I_M_THE_DRIVER"
     assert normalise_column(" LYING_DOWN ") == "LYING_DOWN"
 

@@ -83,6 +83,22 @@ def resample_to_grid(
         x = x[:, None]
     if t.shape[0] != x.shape[0]:
         raise ValueError(f"t has {t.shape[0]} samples but x has {x.shape[0]}")
+    if fs <= 0:
+        raise ValueError("fs must be positive")
+    if max_gap < 0:
+        raise ValueError("max_gap must be non-negative")
+
+    # Handle a truly empty stream before indexing t[0] or constructing the
+    # de-duplication mask.  The caller may still provide an explicit grid
+    # origin, but an empty input never manufactures output samples.
+    if t.size == 0:
+        grid_t0 = 0.0 if t0 is None else float(t0)
+        return ResampledStream(
+            values=np.zeros((0, x.shape[1]), dtype=np.float32),
+            valid=np.zeros((0,), dtype=bool),
+            t0=grid_t0,
+            fs=fs,
+        )
 
     # Guard against duplicated/out-of-order timestamps, which do occur.
     order = np.argsort(t, kind="stable")
@@ -93,6 +109,8 @@ def resample_to_grid(
     grid_t0 = float(t[0]) if t0 is None else float(t0)
     if duration is None:
         duration = float(t[-1] - grid_t0) if t.size > 1 else 0.0
+    if duration < 0:
+        raise ValueError("duration must be non-negative")
     n_out = max(int(np.floor(duration * fs)), 0)
 
     n_channels = x.shape[1]

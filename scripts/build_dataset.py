@@ -55,7 +55,10 @@ def main() -> int:
         print(f"raw root not found: {raw_root}")
         return 1
 
-    uuids = args.users or sorted(raw_io.discover_sensor_files(raw_root, "acc"))
+    print("Indexing sensor files once ...")
+    acc_by_user = raw_io.discover_sensor_files(raw_root, "acc")
+    gyro_by_user = raw_io.discover_sensor_files(raw_root, "gyro")
+    uuids = args.users or sorted(acc_by_user)
     if args.limit:
         uuids = uuids[: args.limit]
     if not uuids:
@@ -70,7 +73,9 @@ def main() -> int:
             print(f"  {uuid}: no original-label file, skipped")
             continue
         arrays, report = build_user(raw_root, uuid, original, cleaned,
-                                    data_cfg=data_cfg, label_cfg=label_cfg)
+                                    data_cfg=data_cfg, label_cfg=label_cfg,
+                                    acc_index=acc_by_user.get(uuid, {}),
+                                    gyro_index=gyro_by_user.get(uuid, {}))
         reports.append(report)
         if arrays is None:
             print(f"  {uuid}: produced no usable windows "

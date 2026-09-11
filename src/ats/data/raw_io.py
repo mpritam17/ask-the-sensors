@@ -139,15 +139,24 @@ def discover_sensor_files(root: Path, sensor: str) -> Dict[str, Dict[int, Path]]
 
 
 def iter_examples(
-    root: Path, uuid: str, timestamps: Optional[List[int]] = None
+    root: Path,
+    uuid: str,
+    timestamps: Optional[List[int]] = None,
+    acc_index: Optional[Dict[int, Path]] = None,
+    gyro_index: Optional[Dict[int, Path]] = None,
 ) -> Iterator[Tuple[int, Optional[RawExample], Optional[RawExample]]]:
     """Yield (timestamp, acc_example, gyro_example) for one user.
 
     Either element may be None when that sensor was unavailable — the caller
     decides whether to drop the example or fall back to a single modality.
     """
-    acc_index = discover_sensor_files(root, "acc").get(uuid, {})
-    gyro_index = discover_sensor_files(root, "gyro").get(uuid, {})
+    # A dataset build passes precomputed per-user indices so the large raw
+    # tree is scanned once, rather than twice for every user.  Standalone
+    # callers retain the convenient discovery fallback.
+    if acc_index is None:
+        acc_index = discover_sensor_files(root, "acc").get(uuid, {})
+    if gyro_index is None:
+        gyro_index = discover_sensor_files(root, "gyro").get(uuid, {})
     keys = sorted(set(acc_index) | set(gyro_index))
     if timestamps is not None:
         wanted = set(timestamps)

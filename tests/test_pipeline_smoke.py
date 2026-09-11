@@ -50,3 +50,24 @@ def test_build_user_end_to_end(tmp_path):
 
     assert energy("running") > energy("walking") > energy("sitting")
     assert report.n_examples_used == len(truth)
+
+
+def test_time_origin_is_first_usable_example(tmp_path):
+    uuid = "00000000-0000-4000-8000-000000000001"
+    truth = write_synthetic_user(
+        tmp_path, uuid, [("sitting", 3)], seed=9, missing_example_prob=0.0
+    )
+    first_ts = int(truth["timestamp"].iloc[0])
+    for sensor_dir in ("raw_acc", "proc_gyro"):
+        first_file = next((tmp_path / sensor_dir / uuid).glob(f"{first_ts}.*"))
+        first_file.unlink()
+
+    arrays, report = build_user(
+        tmp_path,
+        uuid,
+        tmp_path / "original_labels" / f"{uuid}.original_labels.csv",
+        tmp_path / "features_labels" / f"{uuid}.features_labels.csv",
+    )
+    assert arrays is not None, report.to_dict()
+    assert arrays["t_start"][0] == 0.0
+    assert int(arrays["t0_unix"]) == int(truth["timestamp"].iloc[1])

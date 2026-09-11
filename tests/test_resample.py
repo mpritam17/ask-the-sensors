@@ -46,6 +46,13 @@ def test_short_and_empty_inputs_do_not_crash():
     assert out.n_samples == 25
     assert out.valid[:3].all() and not out.valid[-1]
 
+    empty = resample_to_grid(
+        np.array([]), np.empty((0, 3)), fs=25.0, duration=20.0, t0=0.0
+    )
+    assert empty.values.shape == (0, 3)
+    assert empty.valid.shape == (0,)
+    assert empty.coverage == 0.0
+
 
 def test_align_streams_requires_both_modalities_valid():
     t = np.arange(800) / 40.0

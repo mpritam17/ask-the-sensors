@@ -15,10 +15,11 @@ required set is ~15 GB; budget the disk and the wall-clock time.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import zipfile
 from pathlib import Path
-from urllib import request
+from urllib import error, request
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from ats.config import load_config, resolve  # noqa: E402
@@ -26,7 +27,25 @@ from ats.config import load_config, resolve  # noqa: E402
 CHUNK = 1 << 20
 
 
+def _remote_size(response) -> int | None:
+    content_range = response.headers.get("Content-Range", "")
+    if "/" in content_range:
+        try:
+            return int(content_range.rsplit("/", 1)[1])
+        except ValueError:
+            pass
+    try:
+        return int(response.headers["Content-Length"])
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
 def download(url: str, dest: Path) -> Path:
+    """Download to ``dest`` with safe HTTP resume semantics.
+
+    A server that ignores ``Range`` returns 200 rather than 206. In that case
+    the file is restarted instead of appending a full response to a partial ZIP.
+    """
     dest.parent.mkdir(parents=True, exist_ok=True)
     existing = dest.stat().st_size if dest.exists() else 0
     req = request.Request(url, headers={"User-Agent": "ask-the-sensors/0.1"})
@@ -34,30 +53,67 @@ def download(url: str, dest: Path) -> Path:
         req.add_header("Range", f"bytes={existing}-")
         print(f"  resuming at {existing / 1e6:.1f} MB")
     try:
-        with request.urlopen(req) as response, open(dest, "ab" if existing else "wb") as out:
-            total = int(response.headers.get("Content-Length", 0)) + existing
-            done = existing
-            while True:
-                chunk = response.read(CHUNK)
-                if not chunk:
-                    break
-                out.write(chunk)
-                done += len(chunk)
-                if total:
-                    pct = 100.0 * done / total
-                    print(f"\r  {done / 1e6:8.1f} / {total / 1e6:.1f} MB ({pct:5.1f}%)",
-                          end="", flush=True)
+        with request.urlopen(req, timeout=60) as response:
+            status = getattr(response, "status", response.getcode())
+            append = bool(existing and status == 206)
+            if existing and not append:
+                print("  server ignored Range; restarting the partial download safely")
+            total = _remote_size(response)
+            if total is not None and status == 206:
+                # Content-Range total already includes the downloaded prefix.
+                pass
+            elif total is not None and append:
+                total += existing
+            done = existing if append else 0
+            with open(dest, "ab" if append else "wb") as out:
+                while True:
+                    chunk = response.read(CHUNK)
+                    if not chunk:
+                        break
+                    out.write(chunk)
+                    done += len(chunk)
+                    if total:
+                        pct = 100.0 * done / total
+                        print(f"\r  {done / 1e6:8.1f} / {total / 1e6:.1f} MB ({pct:5.1f}%)",
+                              end="", flush=True)
         print()
+    except error.HTTPError as exc:
+        if exc.code == 416 and dest.exists():
+            print("  server reports the requested range is complete; verifying ZIP")
+            return dest
+        raise RuntimeError(
+            f"HTTP {exc.code} while downloading {url}. Re-run the command to resume."
+        ) from exc
     except Exception as exc:  # noqa: BLE001
-        print(f"\n  FAILED: {exc}\n  Re-run to resume from {dest.stat().st_size if dest.exists() else 0} bytes.")
-        raise
+        partial = dest.stat().st_size if dest.exists() else 0
+        raise RuntimeError(
+            f"Download failed after {partial} bytes: {exc}. Re-run the same command "
+            "to resume; do not rename the partial archive."
+        ) from exc
     return dest
+
+
+def verify_zip(archive: Path) -> None:
+    if not zipfile.is_zipfile(archive):
+        raise RuntimeError(
+            f"{archive} is not a valid ZIP. The download may be incomplete; "
+            "remove only this archive and retry."
+        )
+    with zipfile.ZipFile(archive) as zf:
+        bad = zf.testzip()
+    if bad is not None:
+        raise RuntimeError(f"ZIP integrity check failed at member {bad!r}: {archive}")
 
 
 def unpack(archive: Path, target: Path) -> None:
     target.mkdir(parents=True, exist_ok=True)
     print(f"  unpacking into {target}")
     with zipfile.ZipFile(archive) as zf:
+        target_resolved = target.resolve()
+        for member in zf.infolist():
+            candidate = (target / member.filename).resolve()
+            if os.path.commonpath((target_resolved, candidate)) != str(target_resolved):
+                raise RuntimeError(f"unsafe ZIP member path: {member.filename!r}")
         zf.extractall(target)
 
 
@@ -66,6 +122,11 @@ def main() -> int:
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--only", nargs="*", default=None,
                         help="subset of file keys from configs/data.yaml")
+    parser.add_argument(
+        "--root",
+        default=None,
+        help="data destination (overrides dataset.root; useful outside OneDrive)",
+    )
     parser.add_argument("--all", action="store_true", help="fetch every required file")
     parser.add_argument("--keep-archives", action="store_true",
                         help="do not delete the .zip after unpacking")
@@ -74,7 +135,7 @@ def main() -> int:
 
     cfg = load_config("data")
     files = cfg["dataset"]["files"]
-    root = resolve(cfg["dataset"]["root"])
+    root = Path(args.root).expanduser() if args.root else resolve(cfg["dataset"]["root"])
 
     if args.only:
         keys = [k for k in args.only if k in files]
@@ -98,6 +159,8 @@ def main() -> int:
         print(f"\n[{key}] {spec['url']}")
         archive = root / "_archives" / Path(spec["url"]).name
         download(spec["url"], archive)
+        print("  verifying ZIP integrity")
+        verify_zip(archive)
         unpack(archive, root / key)
         if not args.keep_archives:
             archive.unlink(missing_ok=True)

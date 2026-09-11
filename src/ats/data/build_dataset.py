@@ -71,6 +71,8 @@ def build_user(
     cleaned_labels_path: Optional[Path],
     data_cfg: Optional[Config] = None,
     label_cfg: Optional[Config] = None,
+    acc_index: Optional[Dict[int, Path]] = None,
+    gyro_index: Optional[Dict[int, Path]] = None,
 ) -> Tuple[Optional[Dict[str, np.ndarray]], BuildReport]:
     """Build the windowed array set for one user."""
     data_cfg = data_cfg or load_config("data")
@@ -93,14 +95,15 @@ def build_user(
     if not label_by_ts:
         return None, report
 
-    t0_unix = int(min(label_by_ts))
-
     window_sets: List[WindowSet] = []
     y_blocks: List[np.ndarray] = []
     ts_blocks: List[np.ndarray] = []
+    t0_unix: Optional[int] = None
 
     for ts, acc_ex, gyro_ex in raw_io.iter_examples(raw_root, uuid,
-                                                    timestamps=list(label_by_ts)):
+                                                    timestamps=list(label_by_ts),
+                                                    acc_index=acc_index,
+                                                    gyro_index=gyro_index):
         report.n_examples_seen += 1
         if acc_ex is None or gyro_ex is None:
             report.dropped_no_sensor += 1
@@ -121,13 +124,8 @@ def build_user(
             continue
 
         values, valid, _ = align_streams(acc_stream, gyro_stream)
-        # Place this session on the recording-wide time axis: seconds from the
-        # first retained example. The 40 s inter-session gaps are simply absent
-        # from the axis, which the aggregation layer must (and does) respect.
-        session_t0 = float(ts - t0_unix)
-
         ws = make_windows(
-            values, valid, t0=session_t0, fs=fs,
+            values, valid, t0=0.0, fs=fs,
             window_samples=int(win["window_samples"]),
             hop_samples=int(win["hop_samples"]),
             min_validity=float(win["min_window_validity"]),
@@ -136,6 +134,14 @@ def build_user(
         if len(ws) == 0:
             continue
 
+        # The origin is the first example that actually survives sensor,
+        # coverage, and window checks - never merely the earliest label row.
+        if t0_unix is None:
+            t0_unix = int(ts)
+        session_t0 = float(ts - t0_unix)
+        ws.t_start += session_t0
+        ws.t_end += session_t0
+
         label = label_by_ts[ts]
         window_sets.append(ws)
         y_blocks.append(np.full(len(ws), class_index[label], dtype=np.int8))
@@ -143,7 +149,7 @@ def build_user(
         report.n_examples_used += 1
         report.class_counts[label] += int(ws.valid.sum())
 
-    if not window_sets:
+    if not window_sets or t0_unix is None:
         return None, report
 
     merged = concat_windowsets(window_sets)

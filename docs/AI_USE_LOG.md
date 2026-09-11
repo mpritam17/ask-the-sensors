@@ -21,6 +21,12 @@ run in an isolated environment with 20 tests passing. The PDF was checked as 11 
 pages, rendered page-by-page, and all unavailable figures were labeled as pending
 real-data experiments.
 
+Codex then implemented the two audited preprocessing corrections, safe resumable
+downloads with ZIP validation and a configurable external data root, single-pass raw
+file indexing, deterministic user-disjoint split manifests, and regression tests. The
+team verification run completed with 23 tests passing on Python 3.14.4; Python 3.12
+was not installed on the available WSL image, so that deviation is recorded explicitly.
+
 ## Verification obligations carried forward
 
 These are assumptions an AI assistant could not check and the team must:

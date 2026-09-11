@@ -2,7 +2,7 @@
   "dataset_kind": "real",
   "source": "official ExtraSensory per-user metadata",
   "users": 60,
-  "users_with_cleaned_consistency_filter": 0,
+  "users_with_cleaned_consistency_filter": 60,
   "total_examples": 377346,
   "retained_examples": 307220,
   "retained_fraction": 0.8141599486943017,

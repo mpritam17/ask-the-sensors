@@ -49,11 +49,21 @@ These are real metadata counts, not recognition results. They show a roughly
 102:1 sitting-to-running imbalance and motivate macro-F1, balanced accuracy,
 class weighting, and per-user sampling caps.
 
+## Feature/label metadata - verified 2026-09-12
+
+- Extracted layout: 60 flat `UUID.features_labels.csv.gz` files, matching all
+  60 original-label users.
+- The inspected file has 278 columns: 26 `raw_acc` features, 26 `proc_gyro`
+  features, 51 cleaned label columns, timestamp, and other sensor/context
+  features excluded from this challenge baseline.
+- Relevant cleaned labels contain explicit 0/1 values; unlabeled rows use NaN.
+- The consistency filter matched all 60 users and found zero contradictions in
+  the 307,220 retained single-main-activity examples.
+- The official five-fold archive contains 20 UUID-list files under
+  `cv_5_folds/` (train/test lists for Android and iPhone in each fold).
+
 ## Still pending
 
-- Cleaned-label contradiction counts; the aggregate JSON currently records
-  `users_with_cleaned_consistency_filter: 0` and will be regenerated once
-  `features_labels` finishes.
 - Raw accelerometer/gyroscope nesting, column count, timestamp units, sample
   rate, accelerometer units, missing-modality rate, and coverage statistics.
 - Full per-user/class build manifest and the official-fold mapping.

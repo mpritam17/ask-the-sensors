@@ -1,0 +1,384 @@
+{
+  "dataset_kind": "real",
+  "scope": "official precomputed sensor-feature baseline; not raw-window end-to-end QA",
+  "modalities": "both",
+  "feature_count": 52,
+  "selected_model": "compact_rf",
+  "model_disk_bytes": 12502637,
+  "model_sha256": "ee6db60a011a2579691ee5a2820759a38e06fb3185342da84ff1c717cf16228d",
+  "model_config_sha256": "fef29979588a829e9821e348c6d1516164109d67df344e983bf1303afebefc62",
+  "candidate_validation": {
+    "logistic": {
+      "accuracy": 0.3630495676531482,
+      "balanced_accuracy": 0.34635525061782546,
+      "macro_f1": 0.2906913222161469,
+      "per_class": {
+        "lying_down": {
+          "precision": 0.6558391337973705,
+          "recall": 0.4781628050030757,
+          "f1-score": 0.5530817349026118,
+          "support": 19508.0
+        },
+        "sitting": {
+          "precision": 0.550741904039857,
+          "recall": 0.2626820952577746,
+          "f1-score": 0.35570634115630795,
+          "support": 19358.0
+        },
+        "standing_in_place": {
+          "precision": 0.06711409395973154,
+          "recall": 0.26032823995472554,
+          "f1-score": 0.10671615821830414,
+          "support": 1767.0
+        },
+        "standing_and_moving": {
+          "precision": 0.09074008498583569,
+          "recall": 0.22138228941684665,
+          "f1-score": 0.1287203315333417,
+          "support": 4630.0
+        },
+        "walking": {
+          "precision": 0.40563589173155357,
+          "recall": 0.4219051291939838,
+          "f1-score": 0.41361058601134215,
+          "support": 2593.0
+        },
+        "running": {
+          "precision": 0.004895960832313341,
+          "recall": 0.07947019867549669,
+          "f1-score": 0.009223674096848577,
+          "support": 151.0
+        },
+        "bicycling": {
+          "precision": 0.35111464968152867,
+          "recall": 0.7005559968228753,
+          "f1-score": 0.4677804295942721,
+          "support": 1259.0
+        },
+        "accuracy": 0.3630495676531482,
+        "macro avg": {
+          "precision": 0.30372595986117007,
+          "recall": 0.34635525061782546,
+          "f1-score": 0.2906913222161469,
+          "support": 49266.0
+        },
+        "weighted avg": {
+          "precision": 0.5173688811620298,
+          "recall": 0.3630495676531482,
+          "f1-score": 0.4084489304658446,
+          "support": 49266.0
+        }
+      },
+      "serialized_bytes": 4318,
+      "median_latency_ms_per_window": 0.00037110492022829046,
+      "p95_latency_ms_per_window": 0.0005340819652497546
+    },
+    "compact_rf": {
+      "accuracy": 0.4992895709008241,
+      "balanced_accuracy": 0.36260371472103453,
+      "macro_f1": 0.34956491663640327,
+      "per_class": {
+        "lying_down": {
+          "precision": 0.7838034010783907,
+          "recall": 0.38748205864260815,
+          "f1-score": 0.5185922063666301,
+          "support": 19508.0
+        },
+        "sitting": {
+          "precision": 0.49965955921877797,
+          "recall": 0.720270689120777,
+          "f1-score": 0.5900175613058841,
+          "support": 19358.0
+        },
+        "standing_in_place": {
+          "precision": 0.07759175788795879,
+          "recall": 0.13638936049801925,
+          "f1-score": 0.09891237430740817,
+          "support": 1767.0
+        },
+        "standing_and_moving": {
+          "precision": 0.19005270092226614,
+          "recall": 0.12462203023758099,
+          "f1-score": 0.15053482911557528,
+          "support": 4630.0
+        },
+        "walking": {
+          "precision": 0.33561937419631377,
+          "recall": 0.6039336675665252,
+          "f1-score": 0.43146438903430223,
+          "support": 2593.0
+        },
+        "running": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 151.0
+        },
+        "bicycling": {
+          "precision": 0.7850055126791621,
+          "recall": 0.5655281969817315,
+          "f1-score": 0.6574330563250231,
+          "support": 1259.0
+        },
+        "accuracy": 0.4992895709008241,
+        "macro avg": {
+          "precision": 0.38167604371183855,
+          "recall": 0.36260371472103453,
+          "f1-score": 0.34956491663640327,
+          "support": 49266.0
+        },
+        "weighted avg": {
+          "precision": 0.5650647122722886,
+          "recall": 0.4992895709008241,
+          "f1-score": 0.4943877423871428,
+          "support": 49266.0
+        }
+      },
+      "serialized_bytes": 32652436,
+      "median_latency_ms_per_window": 0.0017208655969637775,
+      "p95_latency_ms_per_window": 0.0019375554175291299
+    },
+    "full_rf": {
+      "accuracy": 0.49807169244509397,
+      "balanced_accuracy": 0.33686522822299986,
+      "macro_f1": 0.32844872412834686,
+      "per_class": {
+        "lying_down": {
+          "precision": 0.8858407079646018,
+          "recall": 0.20524912856264096,
+          "f1-score": 0.33327784251706344,
+          "support": 19508.0
+        },
+        "sitting": {
+          "precision": 0.467268326053781,
+          "recall": 0.9173984915797087,
+          "f1-score": 0.6191688166794506,
+          "support": 19358.0
+        },
+        "standing_in_place": {
+          "precision": 0.06233062330623306,
+          "recall": 0.013016411997736276,
+          "f1-score": 0.02153558052434457,
+          "support": 1767.0
+        },
+        "standing_and_moving": {
+          "precision": 0.3362877997914494,
+          "recall": 0.13930885529157666,
+          "f1-score": 0.19700671960904093,
+          "support": 4630.0
+        },
+        "walking": {
+          "precision": 0.38646696977801553,
+          "recall": 0.5572695719244118,
+          "f1-score": 0.4564118761844599,
+          "support": 2593.0
+        },
+        "running": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 151.0
+        },
+        "bicycling": {
+          "precision": 0.9297752808988764,
+          "recall": 0.5258141382049245,
+          "f1-score": 0.671740233384069,
+          "support": 1259.0
+        },
+        "accuracy": 0.49807169244509397,
+        "macro avg": {
+          "precision": 0.43828138682756534,
+          "recall": 0.33686522822299986,
+          "f1-score": 0.32844872412834686,
+          "support": 49266.0
+        },
+        "weighted avg": {
+          "precision": 0.6123129022535856,
+          "recall": 0.49807169244509397,
+          "f1-score": 0.4357334781889519,
+          "support": 49266.0
+        }
+      },
+      "serialized_bytes": 727833237,
+      "median_latency_ms_per_window": 0.005638423872447732,
+      "p95_latency_ms_per_window": 0.006610397638330322
+    }
+  },
+  "recognition_test": {
+    "accuracy": 0.5338322419706891,
+    "balanced_accuracy": 0.32238667539332694,
+    "macro_f1": 0.3230293595894497,
+    "per_class": {
+      "lying_down": {
+        "precision": 0.6779366785153343,
+        "recall": 0.5478289913159653,
+        "f1-score": 0.6059777588945949,
+        "support": 14970.0
+      },
+      "sitting": {
+        "precision": 0.5667251120202611,
+        "recall": 0.6685435219764435,
+        "f1-score": 0.6134380683765189,
+        "support": 17405.0
+      },
+      "standing_in_place": {
+        "precision": 0.05052005943536404,
+        "recall": 0.13089509143407121,
+        "f1-score": 0.07290270704904851,
+        "support": 1039.0
+      },
+      "standing_and_moving": {
+        "precision": 0.17776639344262296,
+        "recall": 0.08789260385005065,
+        "f1-score": 0.1176271186440678,
+        "support": 3948.0
+      },
+      "walking": {
+        "precision": 0.4343772412144394,
+        "recall": 0.5322202694786174,
+        "f1-score": 0.47834671580887195,
+        "support": 3414.0
+      },
+      "running": {
+        "precision": 0.5,
+        "recall": 0.0039603960396039604,
+        "f1-score": 0.007858546168958742,
+        "support": 505.0
+      },
+      "bicycling": {
+        "precision": 0.5064935064935064,
+        "recall": 0.28536585365853656,
+        "f1-score": 0.36505460218408736,
+        "support": 410.0
+      },
+      "accuracy": 0.5338322419706891,
+      "macro avg": {
+        "precision": 0.41625985587450404,
+        "recall": 0.32238667539332694,
+        "f1-score": 0.3230293595894497,
+        "support": 41691.0
+      },
+      "weighted avg": {
+        "precision": 0.5447219053109893,
+        "recall": 0.5338322419706891,
+        "f1-score": 0.5294963193077266,
+        "support": 41691.0
+      }
+    }
+  },
+  "confusion_matrix": {
+    "classes": [
+      "lying_down",
+      "sitting",
+      "standing_in_place",
+      "standing_and_moving",
+      "walking",
+      "running",
+      "bicycling"
+    ],
+    "matrix": [
+      [
+        8201,
+        5663,
+        369,
+        595,
+        135,
+        1,
+        6
+      ],
+      [
+        2692,
+        11636,
+        1341,
+        733,
+        953,
+        1,
+        49
+      ],
+      [
+        146,
+        538,
+        136,
+        54,
+        138,
+        0,
+        27
+      ],
+      [
+        864,
+        1579,
+        471,
+        347,
+        676,
+        0,
+        11
+      ],
+      [
+        119,
+        928,
+        336,
+        193,
+        1817,
+        0,
+        21
+      ],
+      [
+        70,
+        172,
+        21,
+        15,
+        225,
+        2,
+        0
+      ],
+      [
+        5,
+        16,
+        18,
+        15,
+        239,
+        0,
+        117
+      ]
+    ]
+  },
+  "n_train": 172762,
+  "n_validation": 49266,
+  "n_test": 41691,
+  "users": {
+    "train": 35,
+    "validation": 9,
+    "recognition_test": 11,
+    "qa": 5
+  },
+  "class_counts": {
+    "train": {
+      "lying_down": 55187,
+      "sitting": 76383,
+      "standing_in_place": 4411,
+      "standing_and_moving": 18907,
+      "walking": 14759,
+      "running": 480,
+      "bicycling": 2635
+    },
+    "validation": {
+      "lying_down": 19508,
+      "sitting": 19358,
+      "standing_in_place": 1767,
+      "standing_and_moving": 4630,
+      "walking": 2593,
+      "running": 151,
+      "bicycling": 1259
+    },
+    "recognition_test": {
+      "lying_down": 14970,
+      "sitting": 17405,
+      "standing_in_place": 1039,
+      "standing_and_moving": 3948,
+      "walking": 3414,
+      "running": 505,
+      "bicycling": 410
+    }
+  },
+  "split_manifest": "/mnt/c/Users/mprit/OneDrive/Documents/Ubiquitious Computing/ask-the-sensors-phase1-2/ask-the-sensors/artifacts/precomputed_real_split_manifest.json"
+}

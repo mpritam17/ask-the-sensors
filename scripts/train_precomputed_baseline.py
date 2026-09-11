@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
 
 import numpy as np
+from sklearn.metrics import confusion_matrix
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -92,17 +94,28 @@ def main() -> int:
         provenance=feature_provenance_from_columns(schema),
         feature_source=f"official_precomputed_{args.modalities}",
     )
-    save_bundle(bundle, resolve(args.model))
+    model_path = save_bundle(bundle, resolve(args.model))
+    model_sha256 = hashlib.sha256(model_path.read_bytes()).hexdigest()
     x_test, y_test = partition("recognition_test")
     prediction = np.argmax(predict_probabilities(bundle, x_test), axis=1)
+    recognition_metrics = classification_metrics(y_test, prediction, classes)
     payload = {
         "dataset_kind": "real",
         "scope": "official precomputed sensor-feature baseline; not raw-window end-to-end QA",
         "modalities": args.modalities,
         "feature_count": len(schema),
         "selected_model": bundle["selected_model"],
+        "model_disk_bytes": model_path.stat().st_size,
+        "model_sha256": model_sha256,
+        "model_config_sha256": bundle["config_sha256"],
         "candidate_validation": candidates,
-        "recognition_test": classification_metrics(y_test, prediction, classes),
+        "recognition_test": recognition_metrics,
+        "confusion_matrix": {
+            "classes": classes,
+            "matrix": confusion_matrix(
+                y_test, prediction, labels=np.arange(len(classes))
+            ).tolist(),
+        },
         "n_train": int(len(y_train)),
         "n_validation": int(len(y_validation)),
         "n_test": int(len(y_test)),

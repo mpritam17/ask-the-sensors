@@ -157,16 +157,22 @@ def main() -> int:
     for key in keys:
         spec = files[key]
         print(f"\n[{key}] {spec['url']}")
+        target = root / key
+        completion_marker = target / ".download_complete"
+        if completion_marker.exists():
+            print(f"  already verified and unpacked at {target}; skipping")
+            continue
         archive = root / "_archives" / Path(spec["url"]).name
         download(spec["url"], archive)
         print("  verifying ZIP integrity")
         verify_zip(archive)
-        unpack(archive, root / key)
+        unpack(archive, target)
+        completion_marker.write_text(str(spec["url"]) + "\n", encoding="utf-8")
         if not args.keep_archives:
             archive.unlink(missing_ok=True)
-            print("  archive removed (re-run this script to fetch it again)")
+            print("  archive removed; verified extraction marker retained")
 
-    print("\nDone. Raw data lives under data/raw/ and is git-ignored by design.")
+    print(f"\nDone. Dataset files live under {root} and are not committed by design.")
     return 0
 
 

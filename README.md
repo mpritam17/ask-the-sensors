@@ -93,8 +93,12 @@ Transformers, and Accelerate are optional and needed only for the Qwen Task 4 pa
   official-schema, preliminary-report-contract, and grounded-output checks.
 - Saved synthetic smoke-test outputs are under `artifacts/` and
   `report/figures/synthetic/`; all are explicitly stamped synthetic.
-- Real ExtraSensory training/evaluation and the Qwen weight run remain pending. The
-  preliminary PDF therefore retains honest pending-result panels.
+- A real, user-disjoint baseline using the official precomputed accelerometer and
+  gyroscope features is complete: the compact RF reached 53.38% accuracy and 32.30%
+  macro-F1 on 41,691 examples from 11 untouched users. This is explicitly a
+  sensor-feature recognition baseline, not raw-window or end-to-end QA evaluation.
+- Raw-archive end-to-end evaluation and the Qwen weight run remain pending. The
+  preliminary PDF therefore retains honest pending-result panels for those results.
 
 ## Reproducing our results
 
@@ -136,6 +140,14 @@ pytest -q
 DATA_ROOT=/home/$USER/datasets/extrasensory
 python scripts/fetch_extrasensory.py --root "$DATA_ROOT" \
   --only original_labels features_labels cv_folds
+python scripts/summarize_official_labels.py --root "$DATA_ROOT"
+python scripts/train_precomputed_baseline.py --root "$DATA_ROOT" \
+  --modalities both \
+  --model artifacts/precomputed_real_both_recognizer.joblib \
+  --splits artifacts/precomputed_real_split_manifest.json \
+  --results artifacts/precomputed_real_both_results.json
+
+# The next two archives are needed for the end-to-end raw-window experiment.
 python scripts/fetch_extrasensory.py --root "$DATA_ROOT" --only raw_acc
 python scripts/fetch_extrasensory.py --root "$DATA_ROOT" --only proc_gyro
 

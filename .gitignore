@@ -9,6 +9,7 @@ data/processed/
 # --- artifacts ---
 artifacts/**/*.pt
 artifacts/**/*.joblib
+!artifacts/precomputed_real_both_recognizer.joblib
 artifacts/**/*.onnx
 artifacts/**/*.gguf
 models_cache/

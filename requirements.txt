@@ -13,6 +13,10 @@ pyyaml>=6.0
 # Plots for the five required figures
 matplotlib>=3.7
 
+# Reproducible report build and page-count verification
+reportlab>=4.2
+pypdf>=6.0
+
 # Testing
 pytest>=7.4
 

@@ -6,6 +6,7 @@ import re
 import sys
 from pathlib import Path
 
+from reportlab import rl_config
 from reportlab.graphics.shapes import Drawing, Line, Polygon, Rect, String
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
@@ -27,6 +28,10 @@ ROOT = Path(__file__).resolve().parent
 SOURCE = ROOT / "technical_report.md"
 OUTPUT = ROOT / "technical_report.pdf"
 PAGE_WIDTH, PAGE_HEIGHT = A4
+
+# Stable timestamps/object identifiers make repeated builds byte-for-byte
+# identical when the Markdown source and dependencies are unchanged.
+rl_config.invariant = 1
 
 
 def inline_markup(text: str) -> str:

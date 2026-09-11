@@ -47,7 +47,7 @@ def main() -> int:
     cached = {}
     schema = None
     rng = np.random.default_rng(seed)
-    for uuid in users:
+    for user_index, uuid in enumerate(users, start=1):
         x, y, columns = load_precomputed_user(
             feature_paths[uuid], original_paths[uuid],
             feature_columns=schema, modalities=args.modalities,
@@ -61,16 +61,27 @@ def main() -> int:
             chosen.extend(indices.tolist())
         chosen = np.asarray(sorted(chosen), dtype=int)
         cached[uuid] = (x[chosen], y[chosen])
+        if user_index % 10 == 0 or user_index == len(users):
+            print(
+                f"loaded {user_index}/{len(users)} users; "
+                f"latest retained rows={len(chosen)}",
+                flush=True,
+            )
 
     def partition(name):
-        return (
-            np.concatenate([cached[uuid][0] for uuid in splits[name]]),
-            np.concatenate([cached[uuid][1] for uuid in splits[name]]),
-        )
+        x = np.concatenate([cached[uuid][0] for uuid in splits[name]])
+        y = np.concatenate([cached[uuid][1] for uuid in splits[name]])
+        if not len(y):
+            raise ValueError(f"{name} partition contains no retained examples")
+        return x, y
 
+    def class_counts(values):
+        counts = np.bincount(values, minlength=len(classes))
+        return {name: int(counts[index]) for index, name in enumerate(classes)}
+
+    classes = list(load_config("labels")["classes"])
     x_train, y_train = partition("train")
     x_validation, y_validation = partition("validation")
-    classes = list(load_config("labels")["classes"])
     model_cfg = load_config("model")["recognition"]
     bundle, candidates = train_and_select(
         x_train, y_train, x_validation, y_validation,
@@ -95,6 +106,12 @@ def main() -> int:
         "n_train": int(len(y_train)),
         "n_validation": int(len(y_validation)),
         "n_test": int(len(y_test)),
+        "users": {name: len(split_users) for name, split_users in splits.items()},
+        "class_counts": {
+            "train": class_counts(y_train),
+            "validation": class_counts(y_validation),
+            "recognition_test": class_counts(y_test),
+        },
         "split_manifest": str(split_path),
     }
     results = resolve(args.results)

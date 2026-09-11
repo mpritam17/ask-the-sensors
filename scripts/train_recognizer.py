@@ -67,7 +67,10 @@ def main() -> int:
             n_qa_users=int(data_cfg["split"]["n_qa_users"]),
         )
         write_split_manifest(
-            splits, split_path, seed=int(data_cfg["split"]["seed"]), source="processed_users"
+            splits,
+            split_path,
+            seed=int(data_cfg["split"]["seed"]),
+            source="synthetic_processed_users" if args.synthetic else "real_processed_users",
         )
 
     cap = int(load_config("labels")["imbalance"]["max_windows_per_class_per_user"])

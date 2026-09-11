@@ -33,7 +33,7 @@ def heuristic_probabilities(windows: np.ndarray, classes) -> np.ndarray:
         mean = np.abs(acc.mean(axis=0))
         if acc_std > 0.55:
             label = "running"
-        elif gyro_std > 0.30 and acc_std < 0.28:
+        elif gyro_std > 0.30 and acc_std < 0.15:
             label = "bicycling"
         elif acc_std > 0.16:
             label = "walking"
@@ -59,7 +59,7 @@ def read_recording(path: Path):
     if len(numeric) < 2:
         raise ValueError("recording must contain at least two finite samples")
     timestamps = numeric["timestamp"].to_numpy(dtype=float)
-    timestamps -= timestamps[0]
+    timestamps = timestamps - timestamps[0]
     values = numeric.loc[:, INPUT_COLUMNS[1:]].to_numpy(dtype=float)
     return timestamps, values
 

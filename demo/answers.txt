@@ -1,0 +1,63 @@
+Answer: Lying down
+Activity/Event: Lying down
+Evidence:
+  Timestamp(s): 23.04 to 34.56 seconds from start
+  Sensor Modality: accelerometer
+  Sensor Channel(s): Acc X, Acc Y, Acc Z
+Explanation: This activity has the largest supported duration (11.52 seconds).
+
+Answer: Yes
+Activity/Event: Walking
+Evidence:
+  Timestamp(s): 6.40 to 16.64 seconds from start
+  Sensor Modality: both
+  Sensor Channel(s): All
+Explanation: Found 1 supported walking interval(s).
+
+Answer: 8.96 seconds
+Activity/Event: Running
+Evidence:
+  Timestamp(s): 15.36 to 24.32 seconds from start
+  Sensor Modality: both
+  Sensor Channel(s): All
+Explanation: Summed the durations of 1 supported interval(s).
+
+Answer: 1
+Activity/Event: Walking
+Evidence:
+  Timestamp(s): 6.40 to 16.64 seconds from start
+  Sensor Modality: both
+  Sensor Channel(s): All
+Explanation: Counted separated, gap-aware supported intervals.
+
+Answer: 23.04 seconds from start
+Activity/Event: Lying down
+Evidence:
+  Timestamp(s): 23.04 to 34.56 seconds from start
+  Sensor Modality: accelerometer
+  Sensor Channel(s): Acc X, Acc Y, Acc Z
+Explanation: Selected the start of the first supported matching interval.
+
+Answer: Walking by 1.28 seconds
+Activity/Event: Walking vs Running
+Evidence:
+  Timestamp(s): 6.40 to 16.64 seconds from start; 15.36 to 24.32 seconds from start
+  Sensor Modality: both
+  Sensor Channel(s): All
+Explanation: Compared supported totals: Walking 10.24 seconds; Running 8.96 seconds.
+
+Answer: Yes
+Activity/Event: Running
+Evidence:
+  Timestamp(s): 15.36 to 24.32 seconds from start
+  Sensor Modality: both
+  Sensor Channel(s): All
+Explanation: Strenuous activity is supported only when a high-intensity running interval is present.
+
+Answer: Inconclusive
+Activity/Event: N/A
+Evidence:
+  Timestamp(s): N/A
+  Sensor Modality: N/A
+  Sensor Channel(s): N/A
+Explanation: The question is unsupported by the deterministic timeline rules; no ungrounded claim was generated.

@@ -1,0 +1,25 @@
+{
+  "dataset_kind": "synthetic",
+  "intervals": [
+    {
+      "activity": "sitting",
+      "start": 0.0,
+      "end": 7.0
+    },
+    {
+      "activity": "walking",
+      "start": 7.0,
+      "end": 16.0
+    },
+    {
+      "activity": "running",
+      "start": 16.0,
+      "end": 23.0
+    },
+    {
+      "activity": "lying_down",
+      "start": 23.0,
+      "end": 35.0
+    }
+  ]
+}

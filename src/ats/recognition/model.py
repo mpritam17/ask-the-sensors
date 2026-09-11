@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import pickle
+from time import perf_counter
 from pathlib import Path
 from typing import Dict, Iterable, List, Mapping, Tuple
 
@@ -82,6 +83,15 @@ def train_and_select(
         prediction = estimator.predict(x_validation)
         metrics = classification_metrics(y_validation, prediction, classes)
         metrics["serialized_bytes"] = len(pickle.dumps(estimator, protocol=5))
+        for _ in range(3):
+            estimator.predict(x_validation)
+        timings = []
+        for _ in range(30):
+            started = perf_counter()
+            estimator.predict(x_validation)
+            timings.append((perf_counter() - started) * 1000.0 / max(len(x_validation), 1))
+        metrics["median_latency_ms_per_window"] = float(np.median(timings))
+        metrics["p95_latency_ms_per_window"] = float(np.percentile(timings, 95))
         results[name] = metrics
         fitted[name] = estimator
 

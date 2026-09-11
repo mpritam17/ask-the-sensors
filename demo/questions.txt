@@ -1,0 +1,8 @@
+What was the main activity?
+Did the person walk?
+How long did the person run?
+How many times did the person walk?
+When did lying down begin?
+Did the person spend longer walking than running?
+Was there any strenuous activity?
+Did the person fall?

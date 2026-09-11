@@ -20,6 +20,7 @@ def test_router_and_exact_format():
     assert lines[1].startswith("Activity/Event:")
     assert lines[2] == "Evidence:"
     assert lines[-1].startswith("Explanation:")
+    assert "confidence=" in lines[-1]
 
 
 def test_count_onset_comparison_and_grounding():

@@ -65,12 +65,26 @@ def validate_generated_answer(
         containing = [item for item in intervals if start >= item.start - 1e-6 and end <= item.end + 1e-6]
         if not containing:
             raise GroundingError(f"timestamp [{start}, {end}] is outside supplied evidence")
-        if modality != "N/A" and not any(item.modality in {modality, "both"} or modality == "both" for item in containing):
+        modality_supported = [
+            item for item in containing
+            if modality == "N/A"
+            or item.modality == modality
+            or (item.modality == "both" and modality in {"accelerometer", "gyroscope", "both"})
+        ]
+        if not modality_supported:
             raise GroundingError("claimed modality is not supported by the cited interval")
+        claimed_channels = {str(channel) for channel in channels if str(channel) != "N/A"}
+        if claimed_channels and not any(
+            "All" in item.channels or claimed_channels.issubset(set(item.channels))
+            for item in modality_supported
+        ):
+            raise GroundingError("claimed channels are not supported by the cited interval")
         timestamps.append((start, end))
 
     if answer.lower() not in {"inconclusive", "n/a"} and not timestamps:
         raise GroundingError("a supported claim must cite at least one evidence interval")
+    if answer.lower() in {"inconclusive", "n/a"} and timestamps:
+        raise GroundingError("an inconclusive answer must not cite evidence as support")
     return StructuredAnswer(
         answer=answer,
         activity_event=activity_event,

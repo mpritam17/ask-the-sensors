@@ -87,13 +87,25 @@ def _evidence_answer(answer: str, activity: str, matches: Sequence[ActivityInter
     modalities = {match.modality for match in matches}
     modality = next(iter(modalities)) if len(modalities) == 1 else "both"
     channels = sorted({channel for match in matches for channel in match.channels})
+    mean_confidence = sum(match.confidence for match in matches) / len(matches)
+    feature_values = {}
+    for match in matches:
+        for name, value in match.features.items():
+            feature_values.setdefault(name, []).append(float(value))
+    feature_text = "; ".join(
+        f"{name}={sum(values) / len(values):.3f}"
+        for name, values in sorted(feature_values.items())
+    )
+    measured = f" Mean interval confidence={mean_confidence:.3f}."
+    if feature_text:
+        measured += f" Mean measured features: {feature_text}."
     return StructuredAnswer(
         answer=answer,
         activity_event=DISPLAY_NAMES.get(activity, activity),
         timestamps=[(match.start, match.end) for match in matches],
         modality=modality,
         channels=channels,
-        explanation=explanation,
+        explanation=explanation + measured,
     )
 
 

@@ -8,12 +8,39 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
 from typing import Dict, Iterable, List, Mapping, Optional
 
 import numpy as np
 
 SPLIT_NAMES = ("train", "validation", "recognition_test", "qa")
+
+
+def load_official_fold_map(root: Path) -> Dict[str, int]:
+    """Read the official fold test lists as ``{uuid: fold_number}``."""
+    root = Path(root)
+    fold_dir = root / "cv_5_folds" if (root / "cv_5_folds").is_dir() else root
+    mapping: Dict[str, int] = {}
+    paths = sorted(fold_dir.glob("fold_*_test_*_uuids.txt"))
+    if not paths:
+        raise ValueError(f"no official test-fold UUID lists found under {root}")
+    for path in paths:
+        match = re.match(r"fold_(\d+)_test_", path.name)
+        if not match:
+            continue
+        fold = int(match.group(1))
+        for line in path.read_text(encoding="utf-8").splitlines():
+            uuid = line.strip()
+            if not uuid:
+                continue
+            previous = mapping.get(uuid)
+            if previous is not None and previous != fold:
+                raise ValueError(f"user {uuid} occurs in test folds {previous} and {fold}")
+            mapping[uuid] = fold
+    if not mapping:
+        raise ValueError(f"official fold lists under {root} contain no UUIDs")
+    return mapping
 
 
 def make_user_splits(
@@ -41,17 +68,30 @@ def make_user_splits(
     rng = np.random.default_rng(seed)
     shuffled = list(np.asarray(users)[rng.permutation(len(users))])
 
-    qa_count = min(max(int(n_qa_users), 1), len(users) - 3)
-    qa = [str(u) for u in shuffled[:qa_count]]
-    remaining = [u for u in shuffled if u not in set(qa)]
-
     if official_folds:
         recognition_test = sorted(
-            u for u in remaining if official_folds.get(u) == int(test_fold)
+            u for u in users if official_folds.get(u) == int(test_fold)
         )
+        if recognition_test:
+            remaining = [u for u in shuffled if u not in set(recognition_test)]
+            if len(remaining) < 3:
+                raise ValueError("official test fold leaves too few users for train/validation/QA")
+            qa_count = min(max(int(n_qa_users), 1), len(remaining) - 2)
+            qa = [str(u) for u in remaining[:qa_count]]
+            remaining = [u for u in remaining if u not in set(qa)]
+        else:
+            qa = []
+            remaining = shuffled
     else:
+        qa_count = min(max(int(n_qa_users), 1), len(users) - 3)
+        qa = [str(u) for u in shuffled[:qa_count]]
+        remaining = [u for u in shuffled if u not in set(qa)]
         recognition_test = []
     if not recognition_test:
+        if not qa:
+            qa_count = min(max(int(n_qa_users), 1), len(users) - 3)
+            qa = [str(u) for u in remaining[:qa_count]]
+            remaining = [u for u in remaining if u not in set(qa)]
         test_count = min(max(1, round(len(remaining) * test_fraction)), len(remaining) - 2)
         recognition_test = remaining[:test_count]
 

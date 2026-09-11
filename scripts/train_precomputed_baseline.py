@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from ats.config import load_config, resolve  # noqa: E402
 from ats.data.precomputed import feature_provenance_from_columns, load_precomputed_user  # noqa: E402
-from ats.data.splits import make_user_splits, write_split_manifest  # noqa: E402
+from ats.data.splits import load_official_fold_map, make_user_splits, write_split_manifest  # noqa: E402
 from ats.recognition import classification_metrics, predict_probabilities, save_bundle, train_and_select  # noqa: E402
 
 
@@ -42,9 +42,23 @@ def main() -> int:
 
     data_cfg = load_config("data")
     seed = int(data_cfg["split"]["seed"])
-    splits = make_user_splits(users, seed=seed, n_qa_users=int(data_cfg["split"]["n_qa_users"]))
+    fold_root = root / "cv_folds"
+    official_folds = load_official_fold_map(fold_root)
+    test_fold = int(data_cfg["split"]["fold"])
+    splits = make_user_splits(
+        users,
+        seed=seed,
+        n_qa_users=int(data_cfg["split"]["n_qa_users"]),
+        official_folds=official_folds,
+        test_fold=test_fold,
+    )
     split_path = resolve(args.splits)
-    write_split_manifest(splits, split_path, seed=seed, source="official_precomputed_features")
+    write_split_manifest(
+        splits,
+        split_path,
+        seed=seed,
+        source=f"official_precomputed_features_cv5_fold_{test_fold}",
+    )
 
     cached = {}
     schema = None

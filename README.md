@@ -89,13 +89,13 @@ Transformers, and Accelerate are optional and needed only for the Qwen Task 4 pa
 - Preprocessing, feature extraction, three recognizers, timeline aggregation, Tasks
   1-3, grounded Task 4 fallback/Qwen validation, evaluation, figures, and efficiency
   benchmarking are implemented.
-- `pytest -q` currently passes 44 tests, including end-to-end CLI, downloader-recovery,
+- `pytest -q` currently passes 45 tests, including end-to-end CLI, downloader-recovery,
   official-schema, preliminary-report-contract, and grounded-output checks.
 - Saved synthetic smoke-test outputs are under `artifacts/` and
   `report/figures/synthetic/`; all are explicitly stamped synthetic.
 - A real, user-disjoint baseline using the official precomputed accelerometer and
-  gyroscope features is complete: the compact RF reached 53.38% accuracy and 32.30%
-  macro-F1 on 41,691 examples from 11 untouched users. This is explicitly a
+  gyroscope features is complete: the compact RF reached 54.77% accuracy and 36.21%
+  macro-F1 on 54,323 examples from the 12 official fold-0 test users. This is explicitly a
   sensor-feature recognition baseline, not raw-window or end-to-end QA evaluation.
 - Raw-archive end-to-end evaluation and the Qwen weight run remain pending. The
   preliminary PDF therefore retains honest pending-result panels for those results.
@@ -156,7 +156,7 @@ python scripts/inspect_raw_layout.py --root "$DATA_ROOT"
 
 # 3. Build windowed, labelled arrays
 python scripts/build_dataset.py --raw-root "$DATA_ROOT"
-python scripts/make_splits.py
+python scripts/make_splits.py --cv-folds "$DATA_ROOT/cv_folds"
 python scripts/train_recognizer.py
 ```
 

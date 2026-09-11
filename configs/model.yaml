@@ -1,0 +1,18 @@
+recognition:
+  random_seed: 20255
+  confidence_threshold: 0.35
+  selection_tolerance_macro_f1: 0.01
+  candidates:
+    logistic:
+      max_iter: 1200
+    compact_rf:
+      n_estimators: 80
+      max_depth: 12
+    full_rf:
+      n_estimators: 300
+      max_depth: 18
+
+timeline:
+  smoothing_windows: 3
+  max_gap_seconds: 1.50
+  minimum_interval_seconds: 1.00

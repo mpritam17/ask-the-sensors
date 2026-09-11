@@ -27,6 +27,20 @@ file indexing, deterministic user-disjoint split manifests, and regression tests
 team verification run completed with 23 tests passing on Python 3.14.4; Python 3.12
 was not installed on the available WSL image, so that deviation is recorded explicitly.
 
+Codex implemented the 98-feature recognition schema, class-balanced logistic/compact
+RF/full RF candidates, gap-aware timeline, deterministic Tasks 1-3, exact answer
+formatter, optional Qwen prompt and grounding validator, synthetic demo, QA metrics,
+five figure generators, robustness protocol, and warmed efficiency benchmark. The
+team ran the complete synthetic workflow, inspected all generated figures, and ran 38
+tests. All generated evaluation files are marked synthetic; real-data and Qwen results
+remain explicitly pending.
+
+Inspection of the downloaded official original-label archive showed flat per-user
+`.original_labels.csv.gz` files and `original_label:` column prefixes. Codex identified
+that the scaffold stripped only `label:` and corrected the normalizer; a regression
+test now covers the official prefix. No raw-sensor-layout claim was made because the
+accelerometer and gyroscope archives were still downloading.
+
 ## Verification obligations carried forward
 
 These are assumptions an AI assistant could not check and the team must:

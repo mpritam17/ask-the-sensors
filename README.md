@@ -73,15 +73,27 @@ Three consequences worth stating up front, because they are the design argument:
 ## Setup
 
 ```bash
-git clone <this repo> && cd ask-the-sensors
+git clone https://github.com/mpritam17/ask-the-sensors.git
+cd ask-the-sensors
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.lock  # exact environment used for verification
 pip install -e .            # installs the `ats` package from src/
 ```
 
-Python 3.9+. The core pipeline needs only numpy/scipy/pandas/scikit-learn. PyTorch and
-transformers are optional and only required for the slow path and the compression
-operating points; see the commented block in `requirements.txt`.
+Python 3.9+ is supported. The recorded verification environment is WSL Ubuntu with
+Python 3.14.4 because Python 3.12 was not installed on the available machine. PyTorch,
+Transformers, and Accelerate are optional and needed only for the Qwen Task 4 path.
+
+## Current implementation status
+
+- Preprocessing, feature extraction, three recognizers, timeline aggregation, Tasks
+  1-3, grounded Task 4 fallback/Qwen validation, evaluation, figures, and efficiency
+  benchmarking are implemented.
+- `pytest -q` currently passes 38 tests, including an end-to-end CLI test.
+- Saved synthetic smoke-test outputs are under `artifacts/` and
+  `report/figures/synthetic/`; all are explicitly stamped synthetic.
+- Real ExtraSensory training/evaluation and the Qwen weight run remain pending. The
+  preliminary PDF therefore retains honest pending-result panels.
 
 ## Reproducing our results
 
@@ -92,8 +104,26 @@ ExtraSensory. **Numbers produced this way are not results**; every figure genera
 synthetic input is stamped SYNTHETIC.
 
 ```bash
-python scripts/make_synthetic_data.py --users 3
+python scripts/make_synthetic_data.py --users 8 --scale 0.06 --seed 41
 python scripts/build_dataset.py --raw-root data/raw/synthetic --synthetic
+python scripts/train_recognizer.py \
+  --processed data/processed/synthetic \
+  --splits artifacts/synthetic_split_manifest.json \
+  --model artifacts/synthetic_recognizer.joblib \
+  --results artifacts/synthetic_recognition_results.json --synthetic
+python scripts/evaluate_system.py \
+  --processed data/processed/synthetic \
+  --splits artifacts/synthetic_split_manifest.json \
+  --model artifacts/synthetic_recognizer.joblib \
+  --recognition-results artifacts/synthetic_recognition_results.json \
+  --out artifacts/synthetic_evaluation_results.json
+python scripts/generate_figures.py \
+  --results artifacts/synthetic_evaluation_results.json \
+  --out report/figures/synthetic
+python scripts/benchmark_efficiency.py \
+  --model artifacts/synthetic_recognizer.joblib \
+  --recording-npz data/processed/synthetic/00000004-0000-4000-8000-000000000004.npz \
+  --out artifacts/synthetic_efficiency.json --runs 30
 pytest -q
 ```
 
@@ -102,32 +132,43 @@ pytest -q
 ```bash
 # 1. Fetch. Small files first; the raw archives are ~15 GB and are fetched
 #    sequentially because the dataset site asks for one download at a time.
-python scripts/fetch_extrasensory.py --only original_labels features_labels cv_folds
-python scripts/fetch_extrasensory.py --only raw_acc
-python scripts/fetch_extrasensory.py --only proc_gyro
+DATA_ROOT=/home/$USER/datasets/extrasensory
+python scripts/fetch_extrasensory.py --root "$DATA_ROOT" \
+  --only original_labels features_labels cv_folds
+python scripts/fetch_extrasensory.py --root "$DATA_ROOT" --only raw_acc
+python scripts/fetch_extrasensory.py --root "$DATA_ROOT" --only proc_gyro
 
 # 2. Confirm the on-disk layout (run once; paste the output into the report)
-python scripts/inspect_raw_layout.py --root data/raw/extrasensory
+python scripts/inspect_raw_layout.py --root "$DATA_ROOT"
 
 # 3. Build windowed, labelled arrays
-python scripts/build_dataset.py
+python scripts/build_dataset.py --raw-root "$DATA_ROOT"
+python scripts/make_splits.py
+python scripts/train_recognizer.py
 ```
 
-Subsequent phases (recognition, timeline, QA, evaluation, efficiency) are added to this
-section as they land.
+The downloader resumes safely, detects servers that ignore HTTP Range, verifies every
+ZIP before extraction, and reports actionable recovery commands.
 
 ### Running on a fresh recording
 
 ```bash
 python scripts/answer_questions.py \
-    --recording path/to/recording.csv \
-    --questions path/to/questions.txt \
-    --out answers.txt
+  --recording demo/recording.csv \
+  --questions demo/questions.txt \
+  --out answers.txt \
+  --no-slm
 ```
 
 Accepts a CSV with columns `timestamp, acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z`
 (any sampling rate; it is resampled to 25 Hz) and one question per line. Writes answers
-in the required format. *(Added in Phase 5.)*
+in the required format. Pass `--model artifacts/recognizer.joblib` after real-data
+training. If no recognizer exists, the CLI emits a conspicuous warning and uses a
+transparent demo heuristic; that output is never a reported accuracy result.
+
+Omit `--no-slm` only after installing the optional model dependencies. Qwen receives
+structured intervals/features rather than raw samples, and its JSON is rejected if a
+timestamp lies outside the supplied evidence.
 
 ## Repository layout
 

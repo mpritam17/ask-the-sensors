@@ -1,0 +1,90 @@
+# =============================================================================
+# Label mapping — the 7 challenge classes <- ExtraSensory labels
+#
+# KEY FINDING (documented in the report, Section "Data"):
+# The challenge's 7 classes are not an arbitrary subset. They are *verbatim*
+# the ExtraSensory app's "main activity" category, which the dataset
+# documentation describes as mutually exclusive with exactly these 7 values:
+#   lying down, sitting, standing in place, standing and moving, walking,
+#   running, bicycling.
+#
+# Consequence: we take labels from ExtraSensory.per_uuid_original_labels
+# (the self-reported labels, 970 KB), NOT from the cleaned labels in the
+# primary features file. The cleaning process merged STANDING_IN_PLACE and
+# STANDING_AND_MOVING into a single OR_standing label, so the cleaned release
+# *cannot* express two of our seven classes. The original labels can.
+#
+# Cost of that choice: original labels are pre-cleaning and noisier (a label is
+# only "reported"/"not reported", with no missing-value semantics). We offset
+# this with the consistency filter below, which cross-checks each example
+# against the cleaned labels and drops direct contradictions.
+# =============================================================================
+
+classes:
+  - lying_down
+  - sitting
+  - standing_in_place
+  - standing_and_moving
+  - walking
+  - running
+  - bicycling
+
+# Human-readable names used verbatim in the "Activity/Event:" output field.
+display_names:
+  lying_down: Lying down
+  sitting: Sitting
+  standing_in_place: Standing in place
+  standing_and_moving: Standing and moving
+  walking: Walking
+  running: Running
+  bicycling: Bicycling
+
+# Column in ExtraSensory.per_uuid_original_labels (matched case-insensitively
+# after stripping any "label:" prefix and normalising non-alphanumerics to "_").
+original_label_columns:
+  lying_down: LYING_DOWN
+  sitting: SITTING
+  standing_in_place: STANDING_IN_PLACE
+  standing_and_moving: STANDING_AND_MOVING
+  walking: WALKING
+  running: RUNNING
+  bicycling: BICYCLING
+
+# Cross-check column in the cleaned labels (per_uuid_features_labels).
+# An example is DROPPED when the cleaned label is explicitly 0 while the
+# original main-activity label says 1 — that is a self-contradiction, not a
+# missing value. Cleaned value of NaN (unknown) is tolerated.
+# Note both standing classes check the same cleaned column, because cleaning
+# collapsed them; this filter therefore cannot separate them, it only confirms
+# the user was standing at all.
+cleaned_consistency_columns:
+  lying_down: LYING_DOWN
+  sitting: SITTING
+  standing_in_place: OR_standing
+  standing_and_moving: OR_standing
+  walking: FIX_walking
+  running: FIX_running
+  bicycling: BICYCLING
+
+filters:
+  # Main activity is mutually exclusive in the app UI, but the raw self-reports
+  # occasionally carry two. Ambiguous examples are dropped rather than
+  # arbitrated — they would inject label noise into every downstream metric.
+  drop_multi_main_activity: true
+  # Drop examples with no main activity reported (secondary labels only).
+  require_main_activity: true
+  apply_cleaned_consistency_filter: true
+
+imbalance:
+  # Expected ExtraSensory counts (examples, whole dataset) for reference:
+  #   sitting 136k | lying_down 104k | standing_and_moving 30k | walking 22.5k
+  #   standing_in_place 8k | bicycling 5k | running 1.3k
+  # ~100:1 between the largest and smallest class. This is the single biggest
+  # threat to macro-F1, which the challenge scores explicitly.
+  strategy: class_weight_balanced   # options: none | class_weight_balanced |
+                                    #          undersample_majority | hybrid
+  # Cap on windows per class per user, applied before training. Stops a handful
+  # of very sedentary users from dominating the training set.
+  max_windows_per_class_per_user: 3000
+  # REVISIT after the first confusion matrix: if running recall < 0.5, add
+  # targeted oversampling of running windows rather than raising the cap.

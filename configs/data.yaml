@@ -1,0 +1,84 @@
+# =============================================================================
+# Data pipeline configuration — "Ask the Sensors" (CS60055 Challenge 1)
+#
+# Every value here is a design decision that must be defensible in the report.
+# Rationale is inline. Anything marked REVISIT is a default we expect to tune
+# after seeing real recognition results.
+# =============================================================================
+
+dataset:
+  name: ExtraSensory
+  # Vaizman, Y., Ellis, K., Lanckriet, G. (2017), IEEE Pervasive Computing 16(4).
+  # Dataset home: http://extrasensory.ucsd.edu/  -- CITED at point of use in
+  # src/ats/data/download.py and in the report.
+  root: data/raw/extrasensory
+
+  # ---------------------------------------------------------------------------
+  # Which files we actually need. The full raw release is ~15 GB for acc+gyro,
+  # so the download script fetches these SEQUENTIALLY (the dataset site asks
+  # users to download one archive at a time).
+  # ---------------------------------------------------------------------------
+  files:
+    raw_acc:
+      url: http://extrasensory.ucsd.edu/data/raw_measurements/ExtraSensory.raw_measurements.raw_acc.zip
+      approx_gb: 6.1
+      required: true      # phone accelerometer, 40 Hz, ~20 s per example
+    proc_gyro:
+      url: http://extrasensory.ucsd.edu/data/raw_measurements/ExtraSensory.raw_measurements.proc_gyro.zip
+      approx_gb: 8.7
+      required: true      # calibrated gyroscope, 40 Hz, ~20 s per example
+    original_labels:
+      url: http://extrasensory.ucsd.edu/data/additional_data_files/ExtraSensory.per_uuid_original_labels.zip
+      approx_gb: 0.001
+      required: true      # <-- carries the mutually-exclusive MAIN ACTIVITY
+                          #     labels, which are exactly our 7 classes
+    features_labels:
+      url: http://extrasensory.ucsd.edu/data/primary_data_files/ExtraSensory.per_uuid_features_labels.zip
+      approx_gb: 0.215
+      required: true      # cleaned labels, used only as a consistency filter
+    cv_folds:
+      url: http://extrasensory.ucsd.edu/data/cv5Folds.zip
+      approx_gb: 0.001
+      required: true      # official 5-fold user partition + UUID list
+
+sampling:
+  target_hz: 25           # mandated by the challenge brief
+  source_hz_nominal: 40   # phone acc + gyro are recorded at ~40 Hz
+  example_seconds: 20.0   # each ExtraSensory "example" is a 20 s session
+  example_period_seconds: 60.0  # sessions recur once a minute -> 40 s gaps
+  # A resampled sample is marked INVALID if the nearest real sample is further
+  # away than this. Prevents linear interpolation from inventing motion across
+  # a dropout. 0.08 s = 2 nominal sample periods at 40 Hz.
+  max_interp_gap_seconds: 0.08
+  # Drop an entire example if fewer than this fraction of its 25 Hz grid is
+  # backed by real samples.
+  min_example_coverage: 0.75
+
+windowing:
+  # 64 samples @ 25 Hz = 2.56 s. Power of two -> clean FFT, no zero-padding.
+  # Long enough to hold ~2-4 gait cycles (walking cadence ~1.6-2.2 Hz), short
+  # enough that a 20 s session yields 14 windows and transitions stay sharp.
+  # REVISIT: 3.84 s (96 samples) if running/walking confusion is high.
+  window_samples: 64
+  hop_samples: 32         # 50% overlap: doubles training data, halves the
+                          # worst-case boundary error on interval edges
+  min_window_validity: 0.90   # fraction of valid (non-interpolated-over) samples
+
+split:
+  # User-level split. Window-level or example-level splits leak: adjacent
+  # windows from the same 20 s session are near-duplicates, and per-user
+  # sensor placement/gait is highly idiosyncratic.
+  strategy: by_user
+  source: cv5Folds        # use the official partition so results are comparable
+  fold: 0
+  # Users held out entirely for the end-to-end QA evaluation set (never seen by
+  # the recognition model, and the recordings the QA questions are built from).
+  n_qa_users: 5
+  seed: 20255
+
+output:
+  interim_dir: data/interim
+  processed_dir: data/processed
+  # One .npz per user: windows (N, 64, 6), labels (N,), timestamps, validity.
+  # float32 keeps a full user under ~200 MB.
+  dtype: float32

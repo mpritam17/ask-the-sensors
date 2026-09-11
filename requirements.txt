@@ -1,0 +1,24 @@
+# Core numerics / signal processing
+numpy>=1.24
+scipy>=1.10
+pandas>=2.0
+
+# Recognition layer (fast path backbone)
+scikit-learn>=1.3
+joblib>=1.3
+
+# Config + CLI
+pyyaml>=6.0
+
+# Plots for the five required figures
+matplotlib>=3.7
+
+# Testing
+pytest>=7.4
+
+# --- Optional, installed only for the slow path (Task 4) and compression ---
+# torch>=2.2                 # 1D-CNN variant + quantization operating points
+# transformers>=4.44         # SLM (Qwen2.5-Instruct) for open-world reasoning
+# accelerate>=0.33
+# llama-cpp-python>=0.2.90   # GGUF int4 operating point for the Pareto curve
+# psutil>=5.9                # CPU utilisation during efficiency benchmarking

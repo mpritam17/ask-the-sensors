@@ -1,0 +1,39 @@
+import pytest
+
+from ats.slm import GroundingError, build_prompt, validate_generated_answer
+from ats.timeline import ActivityInterval
+
+
+def _intervals():
+    return [ActivityInterval("running", 4.0, 9.0, 0.9, "both", ["All"], {"acc_rms_g": 1.2})]
+
+
+def test_prompt_contains_only_structured_evidence():
+    prompt = build_prompt("Was activity strenuous?", _intervals())
+    assert "EVIDENCE=" in prompt
+    assert '"start":4.0' in prompt
+    assert "raw signal" not in prompt.lower()
+
+
+def test_validator_accepts_contained_timestamp():
+    answer = validate_generated_answer({
+        "answer": "Yes",
+        "activity_event": "Strenuous activity",
+        "timestamps": [[5.0, 8.0]],
+        "modality": "both",
+        "channels": ["All"],
+        "explanation": "The supplied running interval has elevated motion energy.",
+    }, _intervals())
+    assert answer.timestamps == [(5.0, 8.0)]
+
+
+def test_validator_rejects_invented_timestamp():
+    with pytest.raises(GroundingError):
+        validate_generated_answer({
+            "answer": "Yes",
+            "activity_event": "Strenuous activity",
+            "timestamps": [[2.0, 8.0]],
+            "modality": "both",
+            "channels": ["All"],
+            "explanation": "Unsupported time.",
+        }, _intervals())

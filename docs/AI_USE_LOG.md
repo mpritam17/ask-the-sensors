@@ -12,6 +12,15 @@ design assistant.
 | 1 — repo scaffold | Proposed the folder layout, README skeleton, Makefile, and the two config files with default parameter values and their stated rationale. | *(to fill: reviewed / adjusted X / rejected Y)* |
 | 2 — data pipeline | Wrote `resample.py`, `raw_io.py`, `labels.py`, `windowing.py`, `build_dataset.py`, `synthetic.py`, the three scripts, and 20 unit tests. Identified from the ExtraSensory documentation that the 7 challenge classes correspond to the dataset's mutually-exclusive "main activity" labels, available only in the original-label release. | *(to fill: verified the raw file layout against the real download with `inspect_raw_layout.py`; confirmed / corrected the parser branch that fired)* |
 
+## OpenAI Codex contribution
+
+OpenAI Codex audited the assignment and repository, identified the empty-input and
+time-origin defects, initialized local Git history, and drafted the preliminary
+Markdown/PDF report and its reproducible ReportLab builder. The committed suite was
+run in an isolated environment with 20 tests passing. The PDF was checked as 11 A4
+pages, rendered page-by-page, and all unavailable figures were labeled as pending
+real-data experiments.
+
 ## Verification obligations carried forward
 
 These are assumptions an AI assistant could not check and the team must:

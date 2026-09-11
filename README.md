@@ -1,5 +1,9 @@
 # Ask the Sensors
 
+**Submission report:** [preliminary technical report (PDF)](report/technical_report.pdf)
+with its reproducible [Markdown source](report/technical_report.md) and
+[ReportLab builder](report/build_report.py). Pending experiments are labeled explicitly.
+
 Grounded, explainable activity question answering from wearable accelerometer and
 gyroscope signals.
 

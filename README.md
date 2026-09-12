@@ -89,7 +89,7 @@ Transformers, and Accelerate are optional and needed only for the Qwen Task 4 pa
 - Preprocessing, feature extraction, three recognizers, timeline aggregation, Tasks
   1-3, grounded Task 4 fallback/Qwen validation, evaluation, figures, and efficiency
   benchmarking are implemented.
-- `pytest -q` currently passes 45 tests, including end-to-end CLI, downloader-recovery,
+- `pytest -q` currently passes 50 tests, including end-to-end CLI, downloader-recovery,
   official-schema, preliminary-report-contract, and grounded-output checks.
 - Saved synthetic smoke-test outputs are under `artifacts/` and
   `report/figures/synthetic/`; all are explicitly stamped synthetic.
@@ -149,7 +149,8 @@ python scripts/train_precomputed_baseline.py --root "$DATA_ROOT" \
 
 # The next two archives are needed for the end-to-end raw-window experiment.
 python scripts/fetch_extrasensory.py --root "$DATA_ROOT" --only raw_acc
-python scripts/fetch_extrasensory.py --root "$DATA_ROOT" --only proc_gyro
+python scripts/fetch_extrasensory.py --root "$DATA_ROOT" \
+  --timeout-seconds 180 --only proc_gyro
 
 # 2. Confirm the on-disk layout (run once; paste the output into the report)
 python scripts/inspect_raw_layout.py --root "$DATA_ROOT"
@@ -161,7 +162,18 @@ python scripts/train_recognizer.py
 ```
 
 The downloader resumes safely, detects servers that ignore HTTP Range, verifies every
-ZIP before extraction, and reports actionable recovery commands.
+ZIP before extraction, and reports actionable recovery commands. If the much larger
+gyroscope endpoint is temporarily unavailable, a clearly scoped accelerometer-only
+raw baseline can be built without inventing gyro evidence:
+
+```bash
+python scripts/build_dataset.py --raw-root "$DATA_ROOT" \
+  --out "$DATA_ROOT/processed_acc" --modalities acc
+python scripts/train_recognizer.py --processed "$DATA_ROOT/processed_acc" \
+  --splits artifacts/raw_acc_split_manifest.json \
+  --model artifacts/raw_acc_recognizer.joblib \
+  --results artifacts/raw_acc_recognition_results.json
+```
 
 ### Running on a fresh recording
 

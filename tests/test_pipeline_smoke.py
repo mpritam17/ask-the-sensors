@@ -71,3 +71,24 @@ def test_time_origin_is_first_usable_example(tmp_path):
     assert arrays is not None, report.to_dict()
     assert arrays["t_start"][0] == 0.0
     assert int(arrays["t0_unix"]) == int(truth["timestamp"].iloc[1])
+
+
+def test_accelerometer_only_fallback_records_and_enforces_provenance(tmp_path):
+    uuid = "00000000-0000-4000-8000-000000000002"
+    write_synthetic_user(
+        tmp_path, uuid, [("walking", 2)], seed=10, missing_example_prob=0.0
+    )
+    for path in (tmp_path / "proc_gyro" / uuid).iterdir():
+        path.unlink()
+
+    arrays, report = build_user(
+        tmp_path,
+        uuid,
+        tmp_path / "original_labels" / f"{uuid}.original_labels.csv",
+        tmp_path / "features_labels" / f"{uuid}.features_labels.csv",
+        modalities="acc",
+    )
+    assert arrays is not None, report.to_dict()
+    assert list(arrays["modalities"]) == ["accelerometer"]
+    assert np.all(arrays["windows"][:, :, 3:] == 0)
+    assert report.modalities == "acc"

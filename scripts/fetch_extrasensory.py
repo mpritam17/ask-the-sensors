@@ -40,12 +40,14 @@ def _remote_size(response) -> int | None:
         return None
 
 
-def download(url: str, dest: Path) -> Path:
+def download(url: str, dest: Path, timeout_seconds: float = 60.0) -> Path:
     """Download to ``dest`` with safe HTTP resume semantics.
 
     A server that ignores ``Range`` returns 200 rather than 206. In that case
     the file is restarted instead of appending a full response to a partial ZIP.
     """
+    if timeout_seconds <= 0:
+        raise ValueError("timeout_seconds must be positive")
     dest.parent.mkdir(parents=True, exist_ok=True)
     existing = dest.stat().st_size if dest.exists() else 0
     req = request.Request(url, headers={"User-Agent": "ask-the-sensors/0.1"})
@@ -53,7 +55,7 @@ def download(url: str, dest: Path) -> Path:
         req.add_header("Range", f"bytes={existing}-")
         print(f"  resuming at {existing / 1e6:.1f} MB")
     try:
-        with request.urlopen(req, timeout=60) as response:
+        with request.urlopen(req, timeout=timeout_seconds) as response:
             status = getattr(response, "status", response.getcode())
             append = bool(existing and status == 206)
             if existing and not append:
@@ -130,6 +132,12 @@ def main() -> int:
     parser.add_argument("--all", action="store_true", help="fetch every required file")
     parser.add_argument("--keep-archives", action="store_true",
                         help="do not delete the .zip after unpacking")
+    parser.add_argument(
+        "--timeout-seconds",
+        type=float,
+        default=60.0,
+        help="HTTP connect/read timeout for each operation (default: 60)",
+    )
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
@@ -163,7 +171,7 @@ def main() -> int:
             print(f"  already verified and unpacked at {target}; skipping")
             continue
         archive = root / "_archives" / Path(spec["url"]).name
-        download(spec["url"], archive)
+        download(spec["url"], archive, timeout_seconds=args.timeout_seconds)
         print("  verifying ZIP integrity")
         verify_zip(archive)
         unpack(archive, target)

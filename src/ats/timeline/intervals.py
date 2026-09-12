@@ -27,7 +27,14 @@ class ActivityInterval:
         return payload
 
 
-def evidence_source(activity: str) -> Tuple[str, List[str]]:
+def evidence_source(
+    activity: str, available_modalities: Sequence[str] | None = None
+) -> Tuple[str, List[str]]:
+    available = set(available_modalities or ("accelerometer", "gyroscope"))
+    if available == {"accelerometer"}:
+        return "accelerometer", ["Acc X", "Acc Y", "Acc Z"]
+    if available == {"gyroscope"}:
+        return "gyroscope", ["Gyro X", "Gyro Y", "Gyro Z"]
     if activity in {"lying_down", "sitting", "standing_in_place"}:
         return "accelerometer", ["Acc X", "Acc Y", "Acc Z"]
     if activity == "standing_and_moving":
@@ -62,6 +69,7 @@ def build_timeline(
     smoothing_windows: int = 3,
     max_gap_seconds: float = 1.5,
     minimum_interval_seconds: float = 1.0,
+    available_modalities: Sequence[str] | None = None,
 ) -> List[ActivityInterval]:
     probabilities = np.asarray(probabilities, dtype=np.float64)
     starts = np.asarray(t_start, dtype=np.float64)
@@ -87,7 +95,7 @@ def build_timeline(
     for index in np.flatnonzero(supported):
         activity = str(classes[int(labels[index])])
         start, end, conf = float(starts[index]), float(ends[index]), float(confidence[index])
-        modality, channels = evidence_source(activity)
+        modality, channels = evidence_source(activity, available_modalities)
         if intervals and intervals[-1].activity == activity and start <= intervals[-1].end + max_gap_seconds:
             old_duration = intervals[-1].duration
             new_duration = max(end, intervals[-1].end) - intervals[-1].start

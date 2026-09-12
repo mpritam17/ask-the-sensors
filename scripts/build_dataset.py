@@ -42,6 +42,12 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=None, help="max users to build")
     parser.add_argument("--synthetic", action="store_true",
                         help="tag outputs as synthetic so no figure is mistaken for a result")
+    parser.add_argument(
+        "--modalities",
+        choices=("acc", "both"),
+        default="both",
+        help="build both sensors, or an explicit accelerometer-only fallback",
+    )
     args = parser.parse_args()
 
     data_cfg = load_config("data")
@@ -57,7 +63,10 @@ def main() -> int:
 
     print("Indexing sensor files once ...")
     acc_by_user = raw_io.discover_sensor_files(raw_root, "acc")
-    gyro_by_user = raw_io.discover_sensor_files(raw_root, "gyro")
+    gyro_by_user = (
+        raw_io.discover_sensor_files(raw_root, "gyro")
+        if args.modalities == "both" else {}
+    )
     uuids = args.users or sorted(acc_by_user)
     if args.limit:
         uuids = uuids[: args.limit]
@@ -65,7 +74,10 @@ def main() -> int:
         print("no users found — check the raw layout with scripts/inspect_raw_layout.py")
         return 1
 
-    print(f"Building {len(uuids)} user(s) from {raw_root} -> {out_dir}")
+    print(
+        f"Building {len(uuids)} user(s) from {raw_root} -> {out_dir} "
+        f"(modalities={args.modalities})"
+    )
     reports = []
     for uuid in uuids:
         original, cleaned = _label_paths(raw_root, uuid, args.synthetic)
@@ -75,7 +87,8 @@ def main() -> int:
         arrays, report = build_user(raw_root, uuid, original, cleaned,
                                     data_cfg=data_cfg, label_cfg=label_cfg,
                                     acc_index=acc_by_user.get(uuid, {}),
-                                    gyro_index=gyro_by_user.get(uuid, {}))
+                                    gyro_index=gyro_by_user.get(uuid, {}),
+                                    modalities=args.modalities)
         reports.append(report)
         if arrays is None:
             print(f"  {uuid}: produced no usable windows "

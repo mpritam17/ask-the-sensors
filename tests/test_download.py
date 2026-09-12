@@ -52,6 +52,27 @@ def test_resume_appends_only_on_partial_content(tmp_path, monkeypatch):
     assert destination.read_bytes() == b"abcdef"
 
 
+def test_download_forwards_custom_timeout(tmp_path, monkeypatch):
+    seen = {}
+
+    def open_response(request, timeout):
+        seen["timeout"] = timeout
+        return FakeResponse(b"ok", 200, {"Content-Length": "2"})
+
+    monkeypatch.setattr(fetch.request, "urlopen", open_response)
+    fetch.download(
+        "https://example.invalid/file.zip",
+        tmp_path / "file.zip",
+        timeout_seconds=180.0,
+    )
+    assert seen["timeout"] == 180.0
+
+
+def test_download_rejects_nonpositive_timeout(tmp_path):
+    with pytest.raises(ValueError, match="must be positive"):
+        fetch.download("https://example.invalid/file.zip", tmp_path / "file.zip", 0)
+
+
 def test_zip_verification_and_traversal_guard(tmp_path):
     valid = tmp_path / "valid.zip"
     with zipfile.ZipFile(valid, "w") as archive:

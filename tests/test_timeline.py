@@ -28,3 +28,17 @@ def test_low_confidence_and_invalid_windows_are_rejected():
         smoothing_windows=1, confidence_threshold=0.35,
     )
     assert timeline == []
+
+
+def test_accelerometer_only_timeline_never_claims_gyroscope_evidence():
+    timeline = build_timeline(
+        np.array([[0.05, 0.95]]),
+        [0.0],
+        [2.56],
+        ["sitting", "walking"],
+        smoothing_windows=1,
+        available_modalities=["accelerometer"],
+    )
+    assert len(timeline) == 1
+    assert timeline[0].modality == "accelerometer"
+    assert timeline[0].channels == ["Acc X", "Acc Y", "Acc Z"]

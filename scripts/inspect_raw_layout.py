@@ -52,10 +52,23 @@ def main() -> int:
                 continue
             t, x = parsed
             span = float(t[-1] - t[0]) if t.size > 1 else 0.0
-            rate = (t.size - 1) / span if span > 0 else float("nan")
+            effective_rate = (t.size - 1) / span if span > 0 else float("nan")
+            positive_dt = np.diff(t)
+            positive_dt = positive_dt[np.isfinite(positive_dt) & (positive_dt > 0)]
+            median_rate = (
+                1.0 / float(np.median(positive_dt))
+                if positive_dt.size else float("nan")
+            )
+            p95_gap = (
+                float(np.percentile(positive_dt, 95))
+                if positive_dt.size else float("nan")
+            )
             mag = float(np.median(np.linalg.norm(x, axis=1)))
-            print(f"    samples={t.size}  span={span:.2f}s  rate={rate:.1f}Hz"
-                  f"  median|x|={mag:.3f}")
+            print(
+                f"    samples={t.size}  span={span:.2f}s  "
+                f"median-rate={median_rate:.1f}Hz  effective-rate={effective_rate:.1f}Hz  "
+                f"p95-gap={p95_gap:.3f}s  median|x|={mag:.3f}"
+            )
             if sensor == "acc":
                 unit = "g" if mag < 5 else "m/s^2 (will be rescaled to g)"
                 print(f"    accelerometer units look like: {unit}")

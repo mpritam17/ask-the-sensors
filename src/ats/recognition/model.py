@@ -85,6 +85,7 @@ def train_and_select(
     schema: List[str] | None = None,
     provenance: List[Mapping[str, object]] | None = None,
     feature_source: str = "engineered_windows",
+    available_modalities: List[str] | None = None,
 ) -> Tuple[Dict[str, object], Dict[str, Dict[str, object]]]:
     seed = int(config["random_seed"])
     results: Dict[str, Dict[str, object]] = {}
@@ -127,6 +128,10 @@ def train_and_select(
         "config_sha256": hashlib.sha256(config_json.encode("utf-8")).hexdigest(),
         "dataset_kind": dataset_kind,
         "validation_metrics": results[selected],
+        "available_modalities": list(
+            available_modalities
+            or sorted({str(item["modality"]) for item in provenance})
+        ),
     }
     return bundle, results
 
@@ -142,8 +147,10 @@ def load_bundle(path: Path) -> Dict[str, object]:
     bundle = joblib.load(path)
     if bundle.get("bundle_version") != BUNDLE_VERSION:
         raise ValueError(f"unsupported recognizer bundle version: {bundle.get('bundle_version')}")
-    if bundle.get("feature_source", "engineered_windows") == "engineered_windows" and list(bundle.get("feature_names", [])) != feature_names():
-        raise ValueError("recognizer feature schema does not match this source version")
+    if str(bundle.get("feature_source", "engineered_windows")).startswith("engineered_windows"):
+        unknown = set(bundle.get("feature_names", [])) - set(feature_names())
+        if unknown:
+            raise ValueError("recognizer feature schema does not match this source version")
     return bundle
 
 

@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from ats.config import load_config, resolve  # noqa: E402
 from ats.data.resample import resample_to_grid  # noqa: E402
 from ats.data.windowing import make_windows  # noqa: E402
-from ats.features import extract_features  # noqa: E402
+from ats.features import extract_features, select_engineered_features  # noqa: E402
 from ats.qa import answer_question, route_question  # noqa: E402
 from ats.recognition import load_bundle, predict_probabilities  # noqa: E402
 from ats.timeline import build_timeline  # noqa: E402
@@ -115,7 +115,13 @@ def main() -> int:
     if model_path.exists():
         bundle = load_bundle(model_path)
         classes = list(bundle["classes"])
-        probabilities = predict_probabilities(bundle, extract_features(windows.values, fs=fs))
+        if not str(bundle.get("feature_source", "engineered_windows")).startswith(
+            "engineered_windows"
+        ):
+            raise ValueError("the selected model was not trained from raw windows")
+        features = extract_features(windows.values, fs=fs)
+        features = select_engineered_features(features, bundle["feature_names"])
+        probabilities = predict_probabilities(bundle, features)
     else:
         print(
             f"WARNING: {model_path} not found; using untrained demo heuristic. "
@@ -136,6 +142,9 @@ def main() -> int:
         smoothing_windows=int(timeline_cfg["smoothing_windows"]),
         max_gap_seconds=float(timeline_cfg["max_gap_seconds"]),
         minimum_interval_seconds=float(timeline_cfg["minimum_interval_seconds"]),
+        available_modalities=(
+            bundle.get("available_modalities") if model_path.exists() else None
+        ),
     )
 
     questions = [line.strip() for line in Path(args.questions).read_text(encoding="utf-8").splitlines() if line.strip()]

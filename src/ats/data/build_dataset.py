@@ -49,6 +49,7 @@ class BuildReport:
     dropped_no_sensor: int = 0
     dropped_low_coverage: int = 0
     unit_rescaled: bool = False
+    modalities: str = "both"
     class_counts: Dict[str, int] = None
 
     def to_dict(self) -> Dict[str, object]:
@@ -73,8 +74,11 @@ def build_user(
     label_cfg: Optional[Config] = None,
     acc_index: Optional[Dict[int, Path]] = None,
     gyro_index: Optional[Dict[int, Path]] = None,
+    modalities: str = "both",
 ) -> Tuple[Optional[Dict[str, np.ndarray]], BuildReport]:
     """Build the windowed array set for one user."""
+    if modalities not in {"acc", "both"}:
+        raise ValueError("modalities must be 'acc' or 'both'")
     data_cfg = data_cfg or load_config("data")
     label_cfg = label_cfg or load_config("labels")
     classes: List[str] = list(label_cfg["classes"])
@@ -86,7 +90,9 @@ def build_user(
     min_cov = float(data_cfg["sampling"]["min_example_coverage"])
     win = data_cfg["windowing"]
 
-    report = BuildReport(uuid=uuid, class_counts={c: 0 for c in classes})
+    report = BuildReport(
+        uuid=uuid, modalities=modalities, class_counts={c: 0 for c in classes}
+    )
 
     labels = build_label_table(original_labels_path, cleaned_labels_path, label_cfg)
     kept = labels[labels["kept"]]
@@ -105,7 +111,7 @@ def build_user(
                                                     acc_index=acc_index,
                                                     gyro_index=gyro_index):
         report.n_examples_seen += 1
-        if acc_ex is None or gyro_ex is None:
+        if acc_ex is None or (modalities == "both" and gyro_ex is None):
             report.dropped_no_sensor += 1
             continue
 
@@ -115,15 +121,25 @@ def build_user(
         acc_stream: ResampledStream = resample_to_grid(
             acc_ex.t, acc_values, fs=fs, duration=example_seconds, t0=0.0,
             max_gap=max_gap)
-        gyro_stream: ResampledStream = resample_to_grid(
-            gyro_ex.t, gyro_ex.x, fs=fs, duration=example_seconds, t0=0.0,
-            max_gap=max_gap)
-
-        if min(acc_stream.coverage, gyro_stream.coverage) < min_cov:
-            report.dropped_low_coverage += 1
-            continue
-
-        values, valid, _ = align_streams(acc_stream, gyro_stream)
+        if modalities == "both":
+            gyro_stream: ResampledStream = resample_to_grid(
+                gyro_ex.t, gyro_ex.x, fs=fs, duration=example_seconds, t0=0.0,
+                max_gap=max_gap)
+            if min(acc_stream.coverage, gyro_stream.coverage) < min_cov:
+                report.dropped_low_coverage += 1
+                continue
+            values, valid, _ = align_streams(acc_stream, gyro_stream)
+        else:
+            if acc_stream.coverage < min_cov:
+                report.dropped_low_coverage += 1
+                continue
+            # Keep the canonical six-channel tensor contract so the existing
+            # extractor remains reusable. Training selects only accelerometer
+            # features, and artifact metadata prevents gyro evidence claims.
+            values = np.concatenate(
+                [acc_stream.values, np.zeros_like(acc_stream.values)], axis=1
+            ).astype(np.float32)
+            valid = acc_stream.valid
         ws = make_windows(
             values, valid, t0=0.0, fs=fs,
             window_samples=int(win["window_samples"]),
@@ -164,6 +180,11 @@ def build_user(
         "classes": np.array(classes, dtype=object),
         "t0_unix": np.int64(t0_unix),
         "uuid": np.array(uuid, dtype=object),
+        "modalities": np.array(
+            ["accelerometer"] if modalities == "acc"
+            else ["accelerometer", "gyroscope"],
+            dtype=object,
+        ),
     }
     report.n_windows = int(len(merged))
     report.n_windows_valid = int(merged.valid.sum())

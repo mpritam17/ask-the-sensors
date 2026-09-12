@@ -48,6 +48,34 @@ def feature_provenance(names: Sequence[str] | None = None) -> List[Dict[str, obj
     return result
 
 
+def feature_indices_for_modalities(
+    modalities: Sequence[str], names: Sequence[str] | None = None
+) -> np.ndarray:
+    """Indices of engineered features supported by the available sensors."""
+    allowed = set(modalities)
+    unknown = allowed - {"accelerometer", "gyroscope"}
+    if unknown:
+        raise ValueError(f"unsupported modalities: {sorted(unknown)}")
+    schema = list(names or feature_names())
+    provenance = feature_provenance(schema)
+    return np.asarray(
+        [index for index, item in enumerate(provenance) if item["modality"] in allowed],
+        dtype=int,
+    )
+
+
+def select_engineered_features(
+    features: np.ndarray, schema: Sequence[str]
+) -> np.ndarray:
+    """Select a bundle's engineered schema from the canonical 98 features."""
+    canonical = feature_names()
+    index = {name: position for position, name in enumerate(canonical)}
+    missing = [name for name in schema if name not in index]
+    if missing:
+        raise ValueError(f"non-engineered feature(s) in bundle schema: {missing[:3]}")
+    return np.asarray(features)[:, [index[name] for name in schema]]
+
+
 def _spectral_features(values: np.ndarray, fs: float) -> np.ndarray:
     """Return dominant frequency, entropy, and three band powers per window."""
     centered = values - values.mean(axis=1, keepdims=True)

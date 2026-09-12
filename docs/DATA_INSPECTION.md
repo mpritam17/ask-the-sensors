@@ -64,6 +64,28 @@ class weighting, and per-user sampling caps.
 
 ## Still pending
 
-- Raw accelerometer/gyroscope nesting, column count, timestamp units, sample
-  rate, accelerometer units, missing-modality rate, and coverage statistics.
-- Full per-user/class build manifest and the official-fold mapping.
+- Gyroscope nesting, sampling characteristics, and missing-modality/coverage
+  statistics once the second raw archive is available.
+
+## Raw accelerometer - verified 2026-09-12
+
+- Verified ZIP extraction occupies about 29 GB and contains 377,056 files for
+  all 60 users under `raw_acc/raw_acc/<UUID>/<timestamp>.m_raw_acc.dat`.
+- Files have four numeric columns: sensor time followed by x, y, and z.
+- Three inspected iPhone-user sessions contain 800 samples, span 23.13-23.16
+  seconds, have a median instantaneous rate of 33.9 Hz, and a 95th-percentile
+  inter-sample gap of 0.030 seconds. Median vector magnitude is 0.997, so these
+  values are already in `g`.
+- An inspected Android-user session contains 800 samples over 16.09 seconds at
+  a 49.65 Hz median rate. Its median magnitude is 10.02, indicating `m/s²`.
+- This cross-device heterogeneity validates timestamp-based resampling to the
+  required 25 Hz and per-session accelerometer unit normalization; a fixed
+  source-rate assumption would be incorrect.
+- An accelerometer-only smoke build for official user
+  `00EABED2-271D-49D8-B599-1D4A09240601` retained 2,118 sessions and produced
+  29,643 valid 2.56-second windows. The count is preprocessing evidence, not a
+  recognition metric. Its artifact records `accelerometer` as the sole
+  available modality and downstream timeline evidence is constrained to the
+  three accelerometer channels.
+- Full per-user/class build manifest and raw-window recognition metrics across
+  a broader user-disjoint subset remain pending.

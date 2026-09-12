@@ -1,0 +1,175 @@
+{
+  "dataset_kind": "real",
+  "scope": "engineered_windows_accelerometer",
+  "available_modalities": [
+    "accelerometer"
+  ],
+  "accuracy_by_question_type": {
+    "identification": 0.2,
+    "verification": 1.0,
+    "duration": 0.0,
+    "count": 0.0,
+    "onset": 0.13333333333333333,
+    "comparison": 0.0,
+    "grounding": 0.2,
+    "open_world": 0.2
+  },
+  "question_count_by_type": {
+    "identification": 15,
+    "verification": 15,
+    "duration": 15,
+    "count": 15,
+    "onset": 15,
+    "comparison": 15,
+    "grounding": 15,
+    "open_world": 15
+  },
+  "confusion_matrix": {
+    "classes": [
+      "lying_down",
+      "sitting",
+      "standing_in_place",
+      "standing_and_moving",
+      "walking",
+      "running",
+      "bicycling"
+    ],
+    "matrix": [
+      [
+        24286,
+        1660,
+        982,
+        584,
+        115,
+        3367,
+        434
+      ],
+      [
+        18028,
+        5912,
+        3094,
+        1843,
+        1023,
+        2955,
+        3145
+      ],
+      [
+        6766,
+        1804,
+        1966,
+        2545,
+        1136,
+        1223,
+        871
+      ],
+      [
+        12533,
+        3478,
+        3032,
+        3087,
+        2275,
+        2037,
+        1479
+      ],
+      [
+        2701,
+        1869,
+        2806,
+        2447,
+        12265,
+        2394,
+        4108
+      ],
+      [
+        13,
+        14,
+        10,
+        14,
+        142,
+        656,
+        109
+      ],
+      [
+        430,
+        60,
+        87,
+        302,
+        552,
+        441,
+        2668
+      ]
+    ]
+  },
+  "strictness": {
+    "threshold": [
+      0.1,
+      0.2,
+      0.3,
+      0.4,
+      0.5,
+      0.6,
+      0.7,
+      0.8,
+      0.9
+    ],
+    "accuracy": [
+      0.2376483088365504,
+      0.14188064459004782,
+      0.07487161324597132,
+      0.048344253585974856,
+      0.03343368160085001,
+      0.02426066938197273,
+      0.019054365149636977,
+      0.015618912697007261,
+      0.013458473525765893
+    ]
+  },
+  "overhead": [
+    {
+      "model": "logistic",
+      "latency_ms": 0.0002341397226886306,
+      "accuracy": 0.3584157708653262,
+      "serialized_bytes": 4150
+    },
+    {
+      "model": "compact_rf",
+      "latency_ms": 0.0015821449457165129,
+      "accuracy": 0.3541034248776829,
+      "serialized_bytes": 40078984
+    },
+    {
+      "model": "full_rf",
+      "latency_ms": 0.006483316171744332,
+      "accuracy": 0.32737223670583193,
+      "serialized_bytes": 1228850025
+    }
+  ],
+  "robustness": {
+    "dropped_percent": [
+      0,
+      5,
+      10,
+      20,
+      30
+    ],
+    "accuracy": [
+      0.3488212531218267,
+      0.3438652102716104,
+      0.3404026127288196,
+      0.33463237917501437,
+      0.3332235548115012
+    ]
+  },
+  "provenance": {
+    "model_config_sha256": "fef29979588a829e9821e348c6d1516164109d67df344e983bf1303afebefc62",
+    "split_manifest_sha256": "f818bef4b191ae6320d126046bd00c2a7d080a1cf97c815951242796f9673b53",
+    "qa_users": [
+      "2C32C23E-E30C-498A-8DD2-0EFB9150A02E",
+      "81536B0A-8DBF-4D8A-AC24-9543E2E4C8E0",
+      "9759096F-1119-4E19-A0AD-6F16989C7E1C",
+      "C48CE857-A0DD-4DDB-BEA5-3A25449B2153",
+      "CA820D43-E5E2-42EF-9798-BE56F776370B"
+    ],
+    "robustness_repeats": 3
+  }
+}

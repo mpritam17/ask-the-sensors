@@ -93,15 +93,52 @@ def qa_queries(true_timeline):
     primary = activities[0]
     second = activities[1] if len(activities) > 1 else primary
     left, right = primary.replace("_", " "), second.replace("_", " ")
+    templates = {
+        "identification": [
+            "What was the main activity?",
+            "Which activity occupied the most time?",
+            "What activity was the person doing for longest?",
+        ],
+        "verification": [
+            f"Did the person perform {left}?",
+            f"Was the person {left}?",
+            f"Has the person done {left}?",
+        ],
+        "duration": [
+            f"How long did {left} last?",
+            f"What was the duration of {left}?",
+            f"What was the total time spent {left}?",
+        ],
+        "count": [
+            f"How many times did {left} occur?",
+            f"How often did the person do {left}?",
+            f"Count the {left} intervals.",
+        ],
+        "onset": [
+            f"When did {left} first begin?",
+            f"At what time did {left} start?",
+            f"What was the onset of {left}?",
+        ],
+        "comparison": [
+            f"Was {left} longer than {right}?",
+            f"Did they spend more time {left} than {right}?",
+            f"Compare the duration of {left} and {right}.",
+        ],
+        "grounding": [
+            f"Did the person perform {left}?",
+            f"Was the person {left}?",
+            f"Has the person done {left}?",
+        ],
+        "open_world": [
+            "Was there any strenuous activity?",
+            "Did the person do anything vigorous?",
+            "Was intense activity present?",
+        ],
+    }
     return [
-        ("identification", "What was the main activity?"),
-        ("verification", f"Did the person perform {left}?"),
-        ("duration", f"How long did {left} last?"),
-        ("count", f"How many times did {left} occur?"),
-        ("onset", f"When did {left} first begin?"),
-        ("comparison", f"Was {left} longer than {right}?"),
-        ("grounding", f"Did the person perform {left}?"),
-        ("open_world", "Was there any strenuous activity?"),
+        (question_type, question)
+        for question_type, questions in templates.items()
+        for question in questions
     ]
 
 
@@ -194,6 +231,7 @@ def main() -> int:
             bundle.get("available_modalities", ["accelerometer", "gyroscope"])
         ),
         "accuracy_by_question_type": {key: float(np.mean(values)) for key, values in qa_scores.items()},
+        "question_count_by_type": {key: len(values) for key, values in qa_scores.items()},
         "confusion_matrix": {"classes": classes, "matrix": matrix.tolist()},
         "strictness": {"threshold": thresholds, "accuracy": [float(np.mean(np.asarray(ious) >= value)) for value in thresholds]},
         "overhead": overhead,

@@ -15,6 +15,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import (
     KeepTogether,
+    Image as ReportImage,
     PageBreak,
     Paragraph,
     Preformatted,
@@ -98,6 +99,26 @@ def pending_figure(title: str, styles) -> KeepTogether:
     return KeepTogether([d, Spacer(1, 6)])
 
 
+def result_figure(spec: str, styles) -> KeepTogether:
+    """Render ``path | width-points | caption`` from the report directory."""
+    parts = [part.strip() for part in spec.split("|", 2)]
+    if len(parts) != 3:
+        raise ValueError("figure tag must be: path | width-points | caption")
+    path = (ROOT / parts[0]).resolve()
+    if ROOT.resolve() not in path.parents or not path.is_file():
+        raise ValueError(f"report figure not found or outside report/: {parts[0]}")
+    width = float(parts[1])
+    if not 100 <= width <= 470:
+        raise ValueError("report figure width must be between 100 and 470 points")
+    figure = ReportImage(str(path))
+    aspect = float(figure.imageHeight) / float(figure.imageWidth)
+    figure.drawWidth = width
+    figure.drawHeight = width * aspect
+    figure.hAlign = "CENTER"
+    caption = Paragraph(inline_markup(parts[2]), styles["caption"])
+    return KeepTogether([figure, Spacer(1, 3), caption])
+
+
 def build_styles():
     base = getSampleStyleSheet()
     return {
@@ -156,6 +177,9 @@ def parse_markdown(text: str, styles):
             flush_paragraph()
             title = line[len("[PENDING_FIGURE:"):-1].strip()
             story.append(pending_figure(title, styles))
+        elif line.startswith("[FIGURE:") and line.endswith("]"):
+            flush_paragraph()
+            story.append(result_figure(line[len("[FIGURE:"):-1], styles))
         elif line.startswith("|" ):
             flush_paragraph()
             rows = []

@@ -38,8 +38,16 @@ def main() -> int:
         extract_features(windows), bundle["feature_names"]
     )
 
+    def window_to_probabilities():
+        extracted = extract_features(windows)
+        selected = select_engineered_features(extracted, bundle["feature_names"])
+        return predict_probabilities(bundle, selected)
+
     recognition = benchmark_callable(
         lambda: predict_probabilities(bundle, features), runs=args.runs
+    )
+    end_to_end_recognition = benchmark_callable(
+        window_to_probabilities, runs=args.runs
     )
     probabilities = predict_probabilities(bundle, features)
     timeline = build_timeline(
@@ -63,6 +71,10 @@ def main() -> int:
         "dataset_kind": bundle["dataset_kind"],
         "artifact": artifact_metadata(model_path, bundle["estimator"]),
         "recognition_batch": {**recognition, "windows_per_run": int(len(windows))},
+        "raw_window_to_probabilities_batch": {
+            **end_to_end_recognition,
+            "windows_per_run": int(len(windows)),
+        },
         "tasks_1_3_batch": {**deterministic_qa, "questions_per_run": len(questions)},
         "task_4": {"status": "not measured; optional model dependencies/weights required"},
     }

@@ -1,5 +1,6 @@
 from ats.qa import answer_question, route_question
 from ats.timeline import ActivityInterval
+import pytest
 
 
 def _timeline():
@@ -36,3 +37,16 @@ def test_unsupported_open_world_question_is_inconclusive():
     result = answer_question("Did the person fall?", _timeline())
     assert result.answer == "Inconclusive"
     assert result.timestamps == []
+
+
+@pytest.mark.parametrize(("question", "intent"), [
+    ("Which activity occupied the most time?", "identification"),
+    ("Has the person done walking?", "verification"),
+    ("What was the total time spent walking?", "duration"),
+    ("Count the walking intervals.", "count"),
+    ("What was the onset of walking?", "onset"),
+    ("Compare the duration of walking and sitting.", "comparison"),
+    ("Did the person do anything vigorous?", "open_world"),
+])
+def test_evaluation_paraphrases_route_to_expected_intent(question, intent):
+    assert route_question(question)[0] == intent

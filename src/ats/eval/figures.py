@@ -9,6 +9,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.ticker import LogLocator, NullFormatter
 import numpy as np
 
 
@@ -50,14 +51,15 @@ def generate_required_figures(payload: Mapping[str, object], out_dir: Path) -> l
 
     values = payload["accuracy_by_question_type"]
     fig, ax = plt.subplots(figsize=(7.0, 3.7))
-    names, scores = list(values), [float(values[name]) for name in values]
+    names = [str(name).replace("_", " ") for name in values]
+    scores = [float(score) for score in values.values()]
     ax.bar(names, scores, color="#4472C4")
-    ax.set_ylim(0, 1)
+    ax.set_ylim(0, 1.08)
     ax.set_ylabel("Accuracy")
     ax.set_title(f"{scope_label}: accuracy by question type")
     ax.tick_params(axis="x", rotation=25)
     for index, score in enumerate(scores):
-        ax.text(index, min(score + 0.025, 0.98), f"{score:.2f}", ha="center", fontsize=7)
+        ax.text(index, score + 0.025, f"{score:.2f}", ha="center", fontsize=7)
     path = out_dir / "figure_accuracy_by_question_type.png"
     _finish(fig, ax, path, dataset_kind); paths.append(path)
 
@@ -104,7 +106,11 @@ def generate_required_figures(payload: Mapping[str, object], out_dir: Path) -> l
         size = point.get("serialized_bytes")
         annotation = str(point["model"])
         if size is not None:
-            annotation += f"\n{float(size) / 1024:.0f} KiB"
+            size_kib = float(size) / 1024
+            annotation += (
+                f"\n{size_kib:.0f} KiB" if size_kib < 1024
+                else f"\n{size_kib / 1024:.1f} MiB"
+            )
         rightmost = abs(x - max_latency) <= 1e-12
         y_offset = -30 if not rightmost and x > min_latency * 5 else -14
         ax.annotate(
@@ -114,6 +120,8 @@ def generate_required_figures(payload: Mapping[str, object], out_dir: Path) -> l
             ha="right" if rightmost else "left", fontsize=8,
         )
     ax.set_xscale("log")
+    ax.xaxis.set_major_locator(LogLocator(base=10, numticks=5))
+    ax.xaxis.set_minor_formatter(NullFormatter())
     ax.set_xlabel("Median validation latency per window (ms, log scale)")
     ax.set_ylabel("Accuracy")
     ax.set_ylim(0, 1.05)

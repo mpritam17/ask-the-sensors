@@ -4,7 +4,7 @@
 
 **CS60055 Ubiquitous Computing - Hackathon Challenge 1**
 
-**Technical implementation report - 12 September 2026**
+**Technical implementation report - 10 September 2026**
 
 ### Team and equal work allocation
 

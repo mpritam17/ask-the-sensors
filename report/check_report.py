@@ -55,6 +55,7 @@ def main() -> int:
     if title != "Ask the Sensors - Technical Report":
         raise SystemExit(f"unexpected PDF title: {title!r}")
     required_claims = (
+        "10 September 2026",
         "35.99%",
         "20.00%",
         "9.67%",

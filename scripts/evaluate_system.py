@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from ats.config import load_config, resolve  # noqa: E402
 from ats.eval.metrics import interval_iou, normalize_answer  # noqa: E402
-from ats.features import extract_features  # noqa: E402
+from ats.features import extract_features, select_engineered_features  # noqa: E402
 from ats.qa import answer_question  # noqa: E402
 from ats.recognition import load_bundle, predict_probabilities  # noqa: E402
 from ats.timeline import build_timeline  # noqa: E402
@@ -31,6 +31,11 @@ def load_users(processed: Path, users):
                 "y": np.asarray(data["y"], int)[valid],
                 "t_start": np.asarray(data["t_start"], float)[valid],
                 "t_end": np.asarray(data["t_end"], float)[valid],
+                "available_modalities": (
+                    [str(item) for item in data["modalities"]]
+                    if "modalities" in data.files
+                    else ["accelerometer", "gyroscope"]
+                ),
             })
     return blocks
 
@@ -40,11 +45,20 @@ def timeline_from_labels(block, classes):
     return build_timeline(
         probabilities, block["t_start"], block["t_end"], classes,
         smoothing_windows=1, confidence_threshold=0.5,
+        available_modalities=block["available_modalities"],
+    )
+
+
+def _features_for_bundle(windows, bundle):
+    return select_engineered_features(
+        extract_features(windows), bundle["feature_names"]
     )
 
 
 def timeline_from_model(block, bundle, model_cfg):
-    probabilities = predict_probabilities(bundle, extract_features(block["windows"]))
+    probabilities = predict_probabilities(
+        bundle, _features_for_bundle(block["windows"], bundle)
+    )
     cfg = model_cfg["timeline"]
     return build_timeline(
         probabilities, block["t_start"], block["t_end"], bundle["classes"],
@@ -52,6 +66,7 @@ def timeline_from_model(block, bundle, model_cfg):
         confidence_threshold=float(model_cfg["recognition"]["confidence_threshold"]),
         max_gap_seconds=float(cfg["max_gap_seconds"]),
         minimum_interval_seconds=float(cfg["minimum_interval_seconds"]),
+        available_modalities=bundle.get("available_modalities"),
     )
 
 
@@ -101,7 +116,9 @@ def main() -> int:
     test_blocks = load_users(processed, splits["recognition_test"])
     test_y = np.concatenate([block["y"] for block in test_blocks])
     test_windows = np.concatenate([block["windows"] for block in test_blocks])
-    test_pred = np.argmax(predict_probabilities(bundle, extract_features(test_windows)), axis=1)
+    test_pred = np.argmax(
+        predict_probabilities(bundle, _features_for_bundle(test_windows, bundle)), axis=1
+    )
     matrix = confusion_matrix(test_y, test_pred, labels=np.arange(len(classes)))
 
     qa_scores = {name: [] for name in (
@@ -148,7 +165,10 @@ def main() -> int:
             dropped = rng.random(corrupted.shape[:2]) < rate / 100.0
             replacement = np.median(corrupted, axis=1, keepdims=True)
             corrupted[dropped] = np.broadcast_to(replacement, corrupted.shape)[dropped]
-            predicted = np.argmax(predict_probabilities(bundle, extract_features(corrupted)), axis=1)
+            predicted = np.argmax(
+                predict_probabilities(bundle, _features_for_bundle(corrupted, bundle)),
+                axis=1,
+            )
             scores.append(float(np.mean(predicted == test_y)))
         robustness.append(float(np.mean(scores)))
 

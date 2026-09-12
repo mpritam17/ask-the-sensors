@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from ats.config import resolve  # noqa: E402
 from ats.efficiency import artifact_metadata, benchmark_callable  # noqa: E402
-from ats.features import extract_features  # noqa: E402
+from ats.features import extract_features, select_engineered_features  # noqa: E402
 from ats.qa import answer_question  # noqa: E402
 from ats.recognition import load_bundle, predict_probabilities  # noqa: E402
 from ats.timeline import build_timeline  # noqa: E402
@@ -34,13 +34,21 @@ def main() -> int:
         windows = np.asarray(data["windows"])[valid][:256]
         starts = np.asarray(data["t_start"], float)[valid][:256]
         ends = np.asarray(data["t_end"], float)[valid][:256]
-    features = extract_features(windows)
+    features = select_engineered_features(
+        extract_features(windows), bundle["feature_names"]
+    )
 
     recognition = benchmark_callable(
         lambda: predict_probabilities(bundle, features), runs=args.runs
     )
     probabilities = predict_probabilities(bundle, features)
-    timeline = build_timeline(probabilities, starts, ends, bundle["classes"])
+    timeline = build_timeline(
+        probabilities,
+        starts,
+        ends,
+        bundle["classes"],
+        available_modalities=bundle.get("available_modalities"),
+    )
     questions = [
         "What was the main activity?",
         "How long did the person walk?",

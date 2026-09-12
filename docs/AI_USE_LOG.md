@@ -82,4 +82,6 @@ answer correctness separately from evidence-grounded correctness, added verifica
 precision/recall/F1/specificity and categorical macro-F1, expanded the strictness plot
 to include numeric tolerances, changed the overhead plot to overall QA accuracy, and
 added the disclosed fixed five-point open-world audit. The user supplied all three team
-names; distinct contributions were not inferred for members whose work was not recorded.
+names and later explicitly requested an equal allocation across three comparable work
+packages. The final report records that requested allocation and shared responsibility
+for review, testing, and submission.

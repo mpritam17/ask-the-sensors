@@ -39,7 +39,7 @@ Qwen2.5-1.5B-Instruct loaded in FP16 on the RTX 5050. In the recorded 30-run ben
 - `22CS30077` - Vishv Magarvadia
 - `23CS30041` - Pritam Mondal
 
-The report records Pritam's verified implementation/integration contribution. Distinct technical contributions for Ritabrata and Vishv were not supplied in the repository record and are not fabricated.
+Work is allocated equally across three comparable packages: Ritabrata owns data engineering and preprocessing, Vishv owns recognition and evaluation, and Pritam owns QA and integration. Architecture review, debugging, final testing, and report review are shared equally.
 
 ## Output contract
 

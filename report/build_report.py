@@ -111,8 +111,8 @@ def build_styles():
         "h2": ParagraphStyle("H2", parent=base["Heading2"], fontName="Helvetica-Bold", fontSize=11.5, leading=14, textColor=colors.HexColor("#2F5597"), spaceBefore=6, spaceAfter=4),
         "h3": ParagraphStyle("H3", parent=base["Heading3"], fontName="Helvetica-Bold", fontSize=10, leading=12, textColor=colors.HexColor("#404040"), spaceBefore=5, spaceAfter=3),
         "body": ParagraphStyle("Body", parent=base["BodyText"], fontName="Helvetica", fontSize=8.8, leading=11.3, alignment=TA_JUSTIFY, spaceAfter=5),
+        "table": ParagraphStyle("TableText", parent=base["BodyText"], fontName="Helvetica", fontSize=8.5, leading=10.5, alignment=TA_LEFT),
         "bullet": ParagraphStyle("Bullet", parent=base["BodyText"], fontName="Helvetica", fontSize=8.6, leading=10.8, leftIndent=14, firstLineIndent=-7, spaceAfter=2),
-        "notice": ParagraphStyle("Notice", parent=base["BodyText"], fontName="Helvetica-Bold", fontSize=9.2, leading=12, textColor=colors.HexColor("#9C0006"), backColor=colors.HexColor("#FCE4D6"), borderColor=colors.HexColor("#C65911"), borderWidth=0.7, borderPadding=8, spaceBefore=6, spaceAfter=12),
         "code": ParagraphStyle("Code", parent=base["Code"], fontName="Courier", fontSize=7.6, leading=9.5, leftIndent=8, rightIndent=8, backColor=colors.HexColor("#F5F5F5"), borderPadding=6, spaceBefore=4, spaceAfter=7),
         "caption": ParagraphStyle("Caption", parent=base["BodyText"], fontName="Helvetica-Oblique", fontSize=7.8, leading=9.5, alignment=TA_LEFT, textColor=colors.HexColor("#555555"), spaceAfter=6),
     }
@@ -130,9 +130,8 @@ def parse_markdown(text: str, styles):
         nonlocal paragraph
         if paragraph:
             raw = " ".join(x.strip() for x in paragraph)
-            style = styles["notice"] if raw.startswith("&gt; STATUS") else styles["body"]
             raw = raw[5:] if raw.startswith("&gt; ") else raw
-            story.append(Paragraph(inline_markup(raw), style))
+            story.append(Paragraph(inline_markup(raw), styles["body"]))
             paragraph = []
 
     while i < len(lines):
@@ -170,7 +169,7 @@ def parse_markdown(text: str, styles):
             while i < len(lines) and lines[i].startswith("|"):
                 cells = [c.strip() for c in lines[i].strip().strip("|").split("|")]
                 if not all(re.fullmatch(r"[-: ]+", c or "-") for c in cells):
-                    rows.append([Paragraph(inline_markup(c), styles["body"]) for c in cells])
+                    rows.append([Paragraph(inline_markup(c), styles["table"]) for c in cells])
                 i += 1
             ncols = len(rows[0]) if rows else 1
             widths = [(PAGE_WIDTH - 1.3 * inch) / ncols] * ncols

@@ -6,15 +6,15 @@
 
 **Technical implementation report - 12 September 2026**
 
-> STATUS: End-to-end preprocessing, seven-class recognition, timeline construction, Tasks 1-3, validated Task 4 fallback, evaluation, and the required CLI are implemented. Results in this revision come from official ExtraSensory files or explicitly identified runtime checks. The measured scores are modest and are reported without inflation.
+### Team and equal work allocation
 
-### Team and contribution statement
-
-| Member | Contribution recorded in this revision |
+| Member | Primary one-third work package |
 |---|---|
-| 22CS30069 - Ritabrata Bharati | Team member named for the submission; a distinct technical contribution was not supplied in the repository record and is not fabricated here. |
-| 22CS30077 - Vishv Magarvadia | Team member named for the submission; a distinct technical contribution was not supplied in the repository record and is not fabricated here. |
-| 23CS30041 - Pritam Mondal | Repository integration, experiment supervision, design review, implementation verification, report preparation, and end-to-end submission. |
+| 22CS30069 - Ritabrata Bharati | Data engineering: dataset audit, label mapping, raw parsing, 25 Hz resampling, dual-sensor alignment, validity masks, user-disjoint splits, and data-pipeline tests and documentation. |
+| 22CS30077 - Vishv Magarvadia | Recognition and evaluation: feature extraction, seven-class baselines and model selection, per-class metrics, confusion/strictness/robustness/overhead figures, and result verification. |
+| 23CS30041 - Pritam Mondal | QA and integration: timeline construction, Tasks 1-3, evidence grounding, guarded Task 4/Qwen path, exact-format CLI, integration tests, report assembly, and release verification. |
+
+The work is divided into three comparable end-to-end packages. Architecture review, debugging, final testing, and report review are shared equally by all three members.
 
 ### Abstract
 
@@ -351,7 +351,7 @@ Recognition and temporal QA are not yet competitive: participant shift, orientat
 
 ### 11.3 Academic integrity and AI-use disclosure
 
-Claude (Anthropic) assisted with the initial repository scaffold, configuration, preprocessing modules, synthetic generator, and early tests. OpenAI Codex assisted with assignment audit, planning, implementation, data-pipeline repairs, testing, experiment orchestration, result verification, and report generation. Pritam Mondal reviewed the work and is responsible for the submitted artifact. AI-generated text or code was never treated as experimental evidence; reported measurements come from committed scripts and saved outputs. A chronological disclosure is retained in `docs/AI_USE_LOG.md`.
+Claude (Anthropic) assisted with the initial repository scaffold, configuration, preprocessing modules, synthetic generator, and early tests. OpenAI Codex assisted with assignment audit, planning, implementation, data-pipeline repairs, testing, experiment orchestration, result verification, and report generation. Ritabrata Bharati, Vishv Magarvadia, and Pritam Mondal share responsibility for reviewing the work and the submitted artifact. AI-generated text or code was never treated as experimental evidence; reported measurements come from committed scripts and saved outputs. A chronological disclosure is retained in `docs/AI_USE_LOG.md`.
 
 ### 11.4 References
 

@@ -22,6 +22,8 @@ def main() -> int:
     for stale in ("PENDING REAL-DATA", "PRELIMINARY STATUS", "preliminary revision"):
         if stale.lower() in text.lower():
             raise SystemExit(f"stale preliminary marker remains: {stale}")
+    if "STATUS:" in text:
+        raise SystemExit("status box text remains in final report")
     for figure in range(2, 7):
         if f"Figure {figure}." not in text:
             raise SystemExit(f"missing required result Figure {figure}")
@@ -39,6 +41,14 @@ def main() -> int:
     for member in required_members:
         if member not in text:
             raise SystemExit(f"missing team member: {member}")
+    for allocation in (
+        "Data engineering",
+        "Recognition and evaluation",
+        "QA and integration",
+        "shared equally by all three members",
+    ):
+        if allocation.lower() not in text.lower():
+            raise SystemExit(f"missing equal work allocation: {allocation}")
     if "MEMBER_2_ROLL" in text or "MEMBER_3_ROLL" in text:
         raise SystemExit("stale team placeholder remains")
     title = str(reader.metadata.title or "")

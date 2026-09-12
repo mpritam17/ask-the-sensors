@@ -14,6 +14,7 @@ artifacts/**/*.joblib
 !artifacts/raw_both_recognizer.joblib
 artifacts/**/*.onnx
 artifacts/**/*.gguf
+artifacts/synthetic_*.json
 models_cache/
 
 # --- python ---
@@ -26,7 +27,8 @@ venv/
 *.egg-info/
 /tmp/
 
-# --- keep these ---
-!report/figures/*.png
+# --- generated experiment figures not used by the final report ---
+report/figures/real_precomputed/
+report/figures/real_raw_acc/
+report/figures/synthetic/
 report/rendered_*/
-!artifacts/.gitkeep

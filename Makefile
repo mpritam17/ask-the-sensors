@@ -6,7 +6,7 @@ help:
 	@echo "smoke    - synthetic data -> full pipeline, no download needed"
 	@echo "data     - build the dataset from real ExtraSensory raw files"
 	@echo "demo     - answer the committed synthetic demonstration questions"
-	@echo "report   - rebuild the preliminary technical report PDF"
+	@echo "report   - rebuild and validate the final technical report PDF"
 	@echo "clean    - remove generated data and caches (keeps raw downloads)"
 
 install:

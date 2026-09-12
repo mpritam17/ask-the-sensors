@@ -180,7 +180,7 @@ artifacts/          committed models, split manifests, measurements, result JSON
 configs/            sampling/window/label configuration
 demo/               small recording and questions
 docs/               design decisions, data inspection, and AI-use log
-report/             report source/PDF and real/synthetic figures
+report/             final report source/PDF and five measured figures
 scripts/            download, build, train, evaluate, benchmark, and CLI entry points
 src/ats/            data, features, recognition, timeline, QA, SLM, eval, efficiency
 tests/              unit and integration tests

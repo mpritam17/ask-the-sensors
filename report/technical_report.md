@@ -12,13 +12,13 @@
 
 | Member | Contribution recorded in this revision |
 |---|---|
+| 22CS30069 - Ritabrata Bharati | Team member named for the submission; a distinct technical contribution was not supplied in the repository record and is not fabricated here. |
+| 22CS30077 - Vishv Magarvadia | Team member named for the submission; a distinct technical contribution was not supplied in the repository record and is not fabricated here. |
 | 23CS30041 - Pritam Mondal | Repository integration, experiment supervision, design review, implementation verification, report preparation, and end-to-end submission. |
-| MEMBER_2_ROLL - MEMBER_2_NAME | PLACEHOLDER: replace with the second member and contribution before the final administrative submission. |
-| MEMBER_3_ROLL - MEMBER_3_NAME | PLACEHOLDER: replace with the third member and contribution before the final administrative submission. |
 
 ### Abstract
 
-Ask the Sensors turns phone accelerometer and gyroscope recordings into answers that cite the signal intervals used to obtain them. The completed system resamples irregular raw streams to 25 Hz, constructs validity-aware windows, extracts 98 time/frequency features, recognizes seven activities, merges predictions into gap-aware intervals, and routes questions to deterministic or language-model-assisted reasoning. Evaluation is user-disjoint. On 144,056 raw dual-sensor test windows the selected 8.1 KiB balanced logistic model achieved 35.99% accuracy, 37.36% balanced accuracy, and 29.78% macro-F1. The corresponding official precomputed-feature baseline reached 54.77% accuracy and 36.21% macro-F1, showing the remaining cost of reconstructing labels and windows from noisy raw sessions. The strict end-to-end QA score was 13.5% over 600 balanced questions; this low result exposes timeline fragmentation and class confusion rather than hiding them. All 60 automated tests pass.
+Ask the Sensors turns phone accelerometer and gyroscope recordings into answers that cite the signal intervals used to obtain them. The completed system resamples irregular raw streams to 25 Hz, constructs validity-aware windows, extracts 98 time/frequency features, recognizes seven activities, merges predictions into gap-aware intervals, and routes questions to deterministic or language-model-assisted reasoning. Evaluation is user-disjoint. On 144,056 raw dual-sensor test windows the selected 8.1 KiB balanced logistic model achieved 35.99% accuracy, 37.36% balanced accuracy, and 29.78% macro-F1. The corresponding official precomputed-feature baseline reached 54.77% accuracy and 36.21% macro-F1. Across 600 held-out questions, macro-averaged answer accuracy was 20.00%; requiring correct evidence reduced it to 9.67%. These modest results expose timeline fragmentation and class confusion rather than hiding them. All 60 automated tests pass.
 
 ### Deliverables
 
@@ -153,7 +153,17 @@ The official-feature baseline is a useful upper reference but is not presented a
 
 ### 4.4 Per-class result
 
-Test F1 is 50.26% for lying, 29.55% sitting, 18.49% standing in place, 14.09% standing and moving, 55.18% walking, 6.48% running, and 34.38% bicycling. Rare running has only 958 test windows and is frequently confused with walking; the two standing classes are confused with sedentary and each other. Class weights cannot fully compensate for weak session labels and participant shift.
+| Activity | Precision | Recall | F1 | Test windows |
+|---|---:|---:|---:|---:|
+| Lying down | 39.17% | 70.10% | 50.26% | 31,428 |
+| Sitting | 38.58% | 23.94% | 29.54% | 36,000 |
+| Standing in place | 18.53% | 18.44% | 18.49% | 15,604 |
+| Standing and moving | 25.37% | 9.76% | 14.09% | 27,568 |
+| Walking | 68.35% | 46.26% | 55.18% | 27,958 |
+| Running | 3.51% | 42.59% | 6.48% | 958 |
+| Bicycling | 26.08% | 50.46% | 34.38% | 4,540 |
+
+Rare running has only 958 test windows and is frequently confused with walking; the two standing classes are confused with sedentary classes and each other. Class weights cannot fully compensate for coarse session labels and participant shift.
 
 ---PAGE---
 
@@ -228,7 +238,7 @@ This outcome is intentional evidence that the model cannot bypass the determinis
 
 ### 6.4 Limitations of open-world evaluation
 
-The current open-world set covers only the disclosed rule vocabulary and paraphrases; it is not a general natural-language or clinical benchmark. No independent human plausibility panel was available, so no inter-rater agreement is claimed. Broader behavior labels require a preregistered rubric and independent annotation before accuracy can be meaningfully reported.
+The 75 open-world outputs receive a fixed five-point automated audit: one point each for a non-empty structured response, correct broad answer, evidence IoU at least 0.5, exact modality/channel agreement, and an explanation containing a measured feature or interval/confidence cue. The mean is **3.56/5**. This is a deterministic reproducibility check rather than an independent human or language-model plausibility judgment. The current set covers only the disclosed rule vocabulary and paraphrases; it is not a general natural-language or clinical benchmark. No independent human panel was available, so no inter-rater agreement is claimed. Broader behavior labels require a preregistered rubric and independent annotation before accuracy can be meaningfully reported.
 
 ---PAGE---
 
@@ -242,9 +252,11 @@ Categorical questions use exact match. Numeric duration and onset use mean absol
 
 ### 7.2 Results by question type
 
-[FIGURE: figures/real_raw_both/figure_accuracy_by_question_type.png | 430 | **Figure 2.** Exact-match accuracy on 75 held-out real-data questions per type.]
+[FIGURE: figures/real_raw_both/figure_accuracy_by_question_type.png | 430 | **Figure 2.** Plain and evidence-grounded accuracy on 75 real-data questions per type, plus macro averages. Categorical, count, and comparison answers require exact match; duration and onset require absolute error at most 2.56 s. Evidence-grounded correctness additionally requires cited-interval IoU at least 0.5 and exact modality/channel agreement.]
 
-Macro-averaging the eight type accuracies gives **13.5%**. Identification is 8%, verification 40%, count 8%, and open-world 52%; duration, onset, comparison, and strict grounding are 0%. For answered numeric queries, duration MAE is 108.60 s with 100% coverage, while onset MAE is 314.27 s with 26.67% coverage. The poor temporal scores follow directly from fragmented and misclassified intervals. Verification and rule-based open-world questions tolerate some boundary error, while exact durations and comparisons do not.
+Macro-averaging the eight plain-answer accuracies gives **20.00%**; requiring correct evidence gives **9.67%**. Plain accuracy is 8% identification, 52% verification, 0% duration, 8% count, 0% onset, 0% comparison, 40% grounding-query answer, and 52% open world. Evidence-grounded accuracy is 25.33% for verification and 52% for open world, and zero for identification, duration, count, onset, comparison, and the dedicated grounding group. For answered numeric queries, duration MAE is 108.60 s with 100% coverage, while onset MAE is 314.27 s with 26.67% coverage.
+
+Identification macro-F1 is 12.87%, comparison macro-F1 is 0%, and open-world macro-F1 is 34.21%. Binary verification has 76.92% positive precision, 40.00% recall, 52.63% positive F1, and 76.00% specificity (20 TP, 6 FP, 19 TN, 30 FN). The poor temporal scores follow directly from fragmented and misclassified intervals.
 
 ### 7.3 Interpretation
 
@@ -266,13 +278,13 @@ The confusion also explains the QA pattern. A false sedentary interval may domin
 
 # 9. Strictness and Accuracy-Overhead Trade-off
 
-[FIGURE: figures/real_raw_both/figure_accuracy_vs_strictness.png | 355 | **Figure 4.** Grounded temporal accuracy as the required interval IoU increases from 0.1 to 0.9.]
+[FIGURE: figures/real_raw_both/figure_accuracy_vs_strictness.png | 355 | **Figure 4.** Strictness analysis. Left: fraction of cited answers accepted as the evidence-IoU threshold increases from 0.1 to 0.9. Right: duration/onset acceptance as absolute numeric tolerance increases; unanswered numeric queries count as incorrect.]
 
-Accuracy falls from 18.0% at IoU 0.1 to 7.3% at IoU 0.9. The monotonic decline confirms that some answers identify approximately correct activity regions but do not recover reliable boundaries. The 0.5 operating point is 10.0% before the additional modality/channel requirements used by the strict grounding category.
+Evidence acceptance falls from 27.17% at IoU 0.1 to 13.17% at IoU 0.9; the 0.5 value is 17.67%. Duration acceptance is 0% at the primary 2.56 s rule, 16% at 60 s, 76% at 120 s, and 100% at 300 s. Onset remains 0% through 60 s, reaches 13.33% at 120 s, and 18.67% at 300 s. The curves distinguish near misses from large timeline errors.
 
-[FIGURE: figures/real_raw_both/figure_accuracy_vs_overhead.png | 355 | **Figure 5.** User-disjoint validation accuracy versus per-window prediction latency. Labels report serialized estimator size; latency excludes feature extraction.]
+[FIGURE: figures/real_raw_both/figure_accuracy_vs_overhead.png | 355 | **Figure 5.** Overall QA macro accuracy versus median QA-stage latency per query. Deterministic latency is measured per question; Qwen-guarded latency is workload-weighted across seven deterministic tiers and one Task 4 tier. Labels include committed model/cache size; the star marks the only non-dominated configuration.]
 
-The compact forest provides the best validation accuracy (41.79%) but costs 42.5 MiB, compared with 38.93% for the 6.7 KiB logistic estimator. The full forest is dominated: it is slower, much larger, and less accurate than the compact forest. Since logistic regression also has the best validation macro-F1, it is the selected submission point. Figure 5 uses a logarithmic latency axis because all prediction-only values are below 0.01 ms/window on a vectorized 256-window batch.
+Both configurations reach 20.00% overall QA accuracy because every sampled Qwen generation was rejected and safely fell back to the deterministic rule. Deterministic QA takes 0.0124 ms/query with an 8 KiB recognizer. The Qwen-guarded mixed workload takes 414.265 ms/query and adds a 2.89 GiB model cache without an accuracy gain; it is therefore dominated. This negative result is a measured accuracy-overhead tradeoff, not an edge-efficiency claim.
 
 ---PAGE---
 
@@ -321,6 +333,8 @@ python scripts/evaluate_system.py --processed /path/to/processed_both \
   --splits artifacts/raw_both_split_manifest.json \
   --model artifacts/raw_both_recognizer.joblib \
   --recognition-results artifacts/raw_both_recognition_results.json \
+  --efficiency artifacts/raw_both_efficiency.json \
+  --slm-efficiency artifacts/slm_efficiency.json \
   --out artifacts/raw_both_evaluation_results.json
 python scripts/generate_figures.py \
   --results artifacts/raw_both_evaluation_results.json \

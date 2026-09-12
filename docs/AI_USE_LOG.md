@@ -76,3 +76,10 @@ answer violated the rule forbidding evidence on an `Inconclusive` claim. The val
 rejected all 36 calls (initial, five warm-ups, and 30 measurements), and the deterministic
 grounded fallback answered. The report discloses the failure and measured cost instead
 of presenting fallback output as a successful model answer.
+
+For the final rubric audit, Codex corrected the end-to-end evaluation to report plain
+answer correctness separately from evidence-grounded correctness, added verification
+precision/recall/F1/specificity and categorical macro-F1, expanded the strictness plot
+to include numeric tolerances, changed the overhead plot to overall QA accuracy, and
+added the disclosed fixed five-point open-world audit. The user supplied all three team
+names; distinct contributions were not inferred for members whose work was not recorded.

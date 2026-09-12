@@ -31,22 +31,40 @@ def main() -> int:
     }
     if test_counts != {60}:
         raise SystemExit(f"unexpected reported test results: {sorted(test_counts)}")
-    for placeholder in ("MEMBER_2_ROLL", "MEMBER_3_ROLL"):
-        if placeholder not in text:
-            raise SystemExit(f"missing visible team placeholder: {placeholder}")
+    required_members = (
+        "22CS30069 - Ritabrata Bharati",
+        "22CS30077 - Vishv Magarvadia",
+        "23CS30041 - Pritam Mondal",
+    )
+    for member in required_members:
+        if member not in text:
+            raise SystemExit(f"missing team member: {member}")
+    if "MEMBER_2_ROLL" in text or "MEMBER_3_ROLL" in text:
+        raise SystemExit("stale team placeholder remains")
     title = str(reader.metadata.title or "")
     if title != "Ask the Sensors - Technical Report":
         raise SystemExit(f"unexpected PDF title: {title!r}")
     required_claims = (
         "35.99%",
-        "13.5%",
+        "20.00%",
+        "9.67%",
+        "3.56/5",
         "3,314.03 ms",
         "all 36 generations were rejected",
+        "76.00% specificity",
+        "Overall QA macro accuracy",
     )
     for claim in required_claims:
         if claim.lower() not in text.lower():
             raise SystemExit(f"missing measured/disclosed result: {claim}")
-    print(f"OK: {len(reader.pages)} pages; five measured figures; reported test result 60/60")
+    author = str(reader.metadata.author or "")
+    for name in ("Ritabrata Bharati", "Vishv Magarvadia", "Pritam Mondal"):
+        if name not in author:
+            raise SystemExit(f"PDF metadata author missing: {name}")
+    print(
+        f"OK: {len(reader.pages)} pages; three named members; five measured figures; "
+        "reported test result 60/60"
+    )
     return 0
 
 

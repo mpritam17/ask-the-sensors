@@ -83,22 +83,6 @@ def architecture_diagram() -> Drawing:
     return d
 
 
-def pending_figure(title: str, styles) -> KeepTogether:
-    d = Drawing(470, 92)
-    d.add(Rect(0, 0, 470, 92, 4, 4, fillColor=colors.HexColor("#F2F2F2"), strokeColor=colors.HexColor("#7F7F7F"), strokeWidth=1))
-    d.add(String(235, 61, title, textAnchor="middle", fontName="Helvetica-Bold", fontSize=10, fillColor=colors.HexColor("#404040")))
-    d.add(String(
-        235,
-        33,
-        "Pending real-data experiment \u2014 no result available in this preliminary revision.",
-        textAnchor="middle",
-        fontName="Helvetica-Bold",
-        fontSize=8,
-        fillColor=colors.HexColor("#9C0006"),
-    ))
-    return KeepTogether([d, Spacer(1, 6)])
-
-
 def result_figure(spec: str, styles) -> KeepTogether:
     """Render ``path | width-points | caption`` from the report directory."""
     parts = [part.strip() for part in spec.split("|", 2)]
@@ -250,7 +234,7 @@ def main() -> int:
         topMargin=0.62 * inch,
         bottomMargin=0.68 * inch,
         title="Ask the Sensors - Technical Report",
-        author="Pritam Mondal and team",
+        author="Ritabrata Bharati, Vishv Magarvadia, and Pritam Mondal",
         subject="CS60055 Ubiquitous Computing Hackathon Challenge 1",
     )
     doc.build(story, onFirstPage=footer, onLaterPages=footer)

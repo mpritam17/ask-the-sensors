@@ -122,7 +122,8 @@ class weighting, and per-user sampling caps.
 - On 144,056 untouched-user windows it reached 35.99% accuracy, 37.36%
   balanced accuracy, and 29.78% macro-F1.
 - The end-to-end QA set contains 25 short held-out recordings and 600 balanced
-  questions. Macro accuracy across the eight types is 13.5%; detailed zero and
-  nonzero outcomes are retained in `artifacts/raw_both_evaluation_results.json`.
+  questions. Macro answer accuracy across the eight types is 20.00%; requiring
+  correct cited evidence, modality, and channels gives 9.67%. Detailed outcomes
+  are retained in `artifacts/raw_both_evaluation_results.json`.
 - Five report figures were generated only from that saved real-data JSON under
   `report/figures/real_raw_both/`.

@@ -27,9 +27,19 @@ The repository implements the full pipeline:
 | Raw accelerometer-only fallback | 34.88% | 40.99% | 28.13% |
 | Official precomputed dual-feature baseline | 54.77% | - | 36.21% |
 
-The balanced end-to-end QA score is 13.5% over 600 held-out questions. These modest scores and all zero-valued temporal/grounding results are reported directly in the report; software completeness is not presented as model accuracy.
+Across 600 held-out questions, macro-averaged answer accuracy is 20.00%; requiring correct cited evidence, modality, and channels gives 9.67%. These modest scores and zero-valued temporal categories are reported directly; software completeness is not presented as model accuracy.
+
+The 75 open-world outputs also score 3.56/5 under the documented fixed automated audit. This is not a human plausibility score, and no inter-rater agreement is claimed.
 
 Qwen2.5-1.5B-Instruct loaded in FP16 on the RTX 5050. In the recorded 30-run benchmark its generated answers violated the evidence contract, so all 36 calls (one initial, five warm-ups, 30 measured) were rejected and the grounded fallback answered. This is the intended safety behavior, not a successful SLM-quality claim.
+
+## Team
+
+- `22CS30069` - Ritabrata Bharati
+- `22CS30077` - Vishv Magarvadia
+- `23CS30041` - Pritam Mondal
+
+The report records Pritam's verified implementation/integration contribution. Distinct technical contributions for Ritabrata and Vishv were not supplied in the repository record and are not fabricated.
 
 ## Output contract
 
@@ -116,23 +126,27 @@ python scripts/train_recognizer.py --processed "$PROCESSED_ROOT" \
   --splits artifacts/raw_both_split_manifest.json \
   --model artifacts/raw_both_recognizer.joblib \
   --results artifacts/raw_both_recognition_results.json
-python scripts/evaluate_system.py --processed "$PROCESSED_ROOT" \
-  --splits artifacts/raw_both_split_manifest.json \
-  --model artifacts/raw_both_recognizer.joblib \
-  --recognition-results artifacts/raw_both_recognition_results.json \
-  --out artifacts/raw_both_evaluation_results.json
-python scripts/generate_figures.py \
-  --results artifacts/raw_both_evaluation_results.json \
-  --out report/figures/real_raw_both
 python scripts/benchmark_efficiency.py \
   --model artifacts/raw_both_recognizer.joblib \
   --recording-npz "$PROCESSED_ROOT/00EABED2-271D-49D8-B599-1D4A09240601.npz" \
   --out artifacts/raw_both_efficiency.json --runs 30
+HF_HOME=/path/to/huggingface-cache \
+python scripts/benchmark_slm.py --out artifacts/slm_efficiency.json --runs 30
+python scripts/evaluate_system.py --processed "$PROCESSED_ROOT" \
+  --splits artifacts/raw_both_split_manifest.json \
+  --model artifacts/raw_both_recognizer.joblib \
+  --recognition-results artifacts/raw_both_recognition_results.json \
+  --efficiency artifacts/raw_both_efficiency.json \
+  --slm-efficiency artifacts/slm_efficiency.json \
+  --out artifacts/raw_both_evaluation_results.json
+python scripts/generate_figures.py \
+  --results artifacts/raw_both_evaluation_results.json \
+  --out report/figures/real_raw_both
 ```
 
 The downloader resumes safely, detects a server that ignores HTTP Range, verifies ZIP integrity, prevents path traversal during extraction, and writes completion markers only after success.
 
-### Optional Qwen runtime benchmark
+### Optional Qwen runtime benchmark without rebuilding figures
 
 ```bash
 HF_HOME=/path/to/huggingface-cache \

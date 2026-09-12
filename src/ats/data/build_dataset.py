@@ -165,6 +165,13 @@ def build_user(
         report.n_examples_used += 1
         report.class_counts[label] += int(ws.valid.sum())
 
+    # iter_examples walks indexed sensor timestamps. Labelled timestamps for
+    # which every required raw file is absent never enter the loop, so account
+    # for them explicitly rather than silently losing them from the audit.
+    report.dropped_no_sensor += max(
+        0, report.n_examples_labelled - report.n_examples_seen
+    )
+
     if not window_sets or t0_unix is None:
         return None, report
 

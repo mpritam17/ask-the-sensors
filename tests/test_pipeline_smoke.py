@@ -71,6 +71,7 @@ def test_time_origin_is_first_usable_example(tmp_path):
     assert arrays is not None, report.to_dict()
     assert arrays["t_start"][0] == 0.0
     assert int(arrays["t0_unix"]) == int(truth["timestamp"].iloc[1])
+    assert report.dropped_no_sensor == 1
 
 
 def test_accelerometer_only_fallback_records_and_enforces_provenance(tmp_path):

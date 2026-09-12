@@ -1,0 +1,27 @@
+{
+  "dataset_kind": "real",
+  "source": "official ExtraSensory raw-measurement build manifest",
+  "source_manifest_sha256": "afc4ecb100f4373a6b90495eb7ee3ab6e9cbbebf90cca89376ba5a87bb5f32a9",
+  "users": 60,
+  "modalities": [
+    "acc"
+  ],
+  "users_with_accelerometer_unit_rescaling": 26,
+  "n_labelled_without_indexed_example": 14,
+  "n_examples_seen": 307206,
+  "n_examples_labelled": 307220,
+  "n_examples_used": 294772,
+  "n_windows": 4126808,
+  "n_windows_valid": 3809155,
+  "dropped_no_sensor": 0,
+  "dropped_low_coverage": 12434,
+  "class_counts_valid_windows": {
+    "lying_down": 1316699,
+    "sitting": 1688574,
+    "standing_in_place": 97406,
+    "standing_and_moving": 364405,
+    "walking": 267293,
+    "running": 16554,
+    "bicycling": 58224
+  }
+}

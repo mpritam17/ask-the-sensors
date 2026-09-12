@@ -62,11 +62,6 @@ class weighting, and per-user sampling caps.
 - The official five-fold archive contains 20 UUID-list files under
   `cv_5_folds/` (train/test lists for Android and iPhone in each fold).
 
-## Still pending
-
-- Gyroscope nesting, sampling characteristics, and missing-modality/coverage
-  statistics once the second raw archive is available.
-
 ## Raw accelerometer - verified 2026-09-12
 
 - Verified ZIP extraction occupies about 29 GB and contains 377,056 files for
@@ -87,5 +82,24 @@ class weighting, and per-user sampling caps.
   recognition metric. Its artifact records `accelerometer` as the sole
   available modality and downstream timeline evidence is constrained to the
   three accelerometer channels.
-- Full per-user/class build manifest and raw-window recognition metrics across
-  a broader user-disjoint subset remain pending.
+- The completed 60-user accelerometer-only build retained 294,772 sessions and
+  produced 3,809,155 valid windows. Of 307,220 labeled examples, 14 had no
+  indexed accelerometer file and 12,434 failed the 75% coverage threshold.
+- A real fold-0 accelerometer recognizer was then trained and evaluated; its
+  saved metrics and figures are scoped as accelerometer-only, not as the final
+  dual-sensor result.
+
+## Processed gyroscope - verified 2026-09-12
+
+- Verified ZIP extraction occupies about 27 GB and contains 359,912 files for
+  57 users under `proc_gyro/proc_gyro/<UUID>/<timestamp>.m_proc_gyro.dat`.
+  Thus, three of the 60 accelerometer users have no released gyroscope tree.
+- Files have four numeric columns: sensor time followed by x, y, and z.
+- Three inspected sessions contain 800 samples over 19.97 seconds, with a
+  40.0 Hz median and effective rate, a 0.025-second 95th-percentile gap, and a
+  median vector magnitude of about 0.002.
+
+## Still pending
+
+- Aggregate dual-sensor coverage/build statistics and official-fold
+  recognition/QA results.

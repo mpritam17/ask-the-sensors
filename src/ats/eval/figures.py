@@ -23,7 +23,8 @@ def _stamp(ax, dataset_kind: str) -> None:
 
 
 def _finish(fig, ax, path: Path, dataset_kind: str) -> None:
-    _stamp(ax, dataset_kind)
+    for axis in np.atleast_1d(ax).flat:
+        _stamp(axis, dataset_kind)
     fig.tight_layout()
     fig.savefig(path, dpi=180, bbox_inches="tight")
     plt.close(fig)
@@ -50,16 +51,30 @@ def generate_required_figures(payload: Mapping[str, object], out_dir: Path) -> l
     paths: list[Path] = []
 
     values = payload["accuracy_by_question_type"]
-    fig, ax = plt.subplots(figsize=(7.0, 3.7))
-    names = [str(name).replace("_", " ") for name in values]
+    names = [str(name).replace("_", " ") for name in values] + ["overall"]
     scores = [float(score) for score in values.values()]
-    ax.bar(names, scores, color="#4472C4")
+    scores.append(float(payload.get("overall_accuracy_macro", np.mean(scores))))
+    grounded_values = payload.get("grounded_accuracy_by_question_type")
+    fig, ax = plt.subplots(figsize=(7.8, 3.9))
+    x = np.arange(len(names))
+    if grounded_values:
+        grounded = [float(grounded_values[name]) for name in values]
+        grounded.append(float(payload.get("overall_grounded_accuracy_macro", np.mean(grounded))))
+        width = 0.39
+        ax.bar(x - width / 2, scores, width, color="#4472C4", label="Answer correct")
+        ax.bar(x + width / 2, grounded, width, color="#70AD47", label="Answer + evidence correct")
+        ax.legend(loc="upper right", fontsize=7)
+        for index, score in enumerate(grounded):
+            ax.text(index + width / 2, score + 0.022, f"{score:.2f}", ha="center", fontsize=6)
+    else:
+        ax.bar(x, scores, color="#4472C4")
     ax.set_ylim(0, 1.08)
     ax.set_ylabel("Accuracy")
     ax.set_title(f"{scope_label}: accuracy by question type")
-    ax.tick_params(axis="x", rotation=25)
+    ax.set_xticks(x, names, rotation=28, ha="right")
     for index, score in enumerate(scores):
-        ax.text(index, score + 0.025, f"{score:.2f}", ha="center", fontsize=7)
+        position = index - width / 2 if grounded_values else index
+        ax.text(position, score + 0.022, f"{score:.2f}", ha="center", fontsize=6)
     path = out_dir / "figure_accuracy_by_question_type.png"
     _finish(fig, ax, path, dataset_kind); paths.append(path)
 
@@ -87,12 +102,35 @@ def generate_required_figures(payload: Mapping[str, object], out_dir: Path) -> l
     _finish(fig, ax, path, dataset_kind); paths.append(path)
 
     strictness = payload["strictness"]
-    fig, ax = plt.subplots(figsize=(6.5, 3.7))
-    ax.plot(strictness["threshold"], strictness["accuracy"], marker="o", color="#70AD47")
-    ax.set_xlabel("Temporal IoU threshold")
-    ax.set_ylabel("Accuracy")
-    ax.set_ylim(0, 1)
-    ax.set_title(f"{scope_label}: accuracy versus strictness")
+    if "numeric_tolerance_seconds" in strictness:
+        fig, axes = plt.subplots(1, 2, figsize=(7.8, 3.6))
+        axes[0].plot(strictness["threshold"], strictness["accuracy"], marker="o", color="#70AD47")
+        axes[0].set_xlabel("Evidence IoU threshold")
+        axes[0].set_ylabel("Fraction accepted")
+        axes[0].set_ylim(0, 1)
+        axes[0].set_title("Cited intervals")
+        axes[1].plot(
+            strictness["numeric_tolerance_seconds"], strictness["duration_accuracy"],
+            marker="o", label="Duration", color="#4472C4",
+        )
+        axes[1].plot(
+            strictness["numeric_tolerance_seconds"], strictness["onset_accuracy"],
+            marker="s", label="Onset", color="#ED7D31",
+        )
+        axes[1].set_xlabel("Absolute error tolerance (s)")
+        axes[1].set_ylabel("Fraction accepted")
+        axes[1].set_ylim(0, 1)
+        axes[1].set_title("Numeric answers")
+        axes[1].legend(fontsize=7)
+        fig.suptitle(f"{scope_label}: accuracy versus strictness", fontsize=11)
+        ax = axes
+    else:
+        fig, ax = plt.subplots(figsize=(6.5, 3.7))
+        ax.plot(strictness["threshold"], strictness["accuracy"], marker="o", color="#70AD47")
+        ax.set_xlabel("Temporal IoU threshold")
+        ax.set_ylabel("Accuracy")
+        ax.set_ylim(0, 1)
+        ax.set_title(f"{scope_label}: accuracy versus strictness")
     path = out_dir / "figure_accuracy_vs_strictness.png"
     _finish(fig, ax, path, dataset_kind); paths.append(path)
 
@@ -109,7 +147,11 @@ def generate_required_figures(payload: Mapping[str, object], out_dir: Path) -> l
             size_kib = float(size) / 1024
             annotation += (
                 f"\n{size_kib:.0f} KiB" if size_kib < 1024
-                else f"\n{size_kib / 1024:.1f} MiB"
+                else (
+                    f"\n{size_kib / (1024 ** 2):.2f} GiB"
+                    if size_kib >= 1024 ** 2
+                    else f"\n{size_kib / 1024:.1f} MiB"
+                )
             )
         rightmost = abs(x - max_latency) <= 1e-12
         y_offset = -30 if not rightmost and x > min_latency * 5 else -14
@@ -122,12 +164,40 @@ def generate_required_figures(payload: Mapping[str, object], out_dir: Path) -> l
     ax.set_xscale("log")
     ax.xaxis.set_major_locator(LogLocator(base=10, numticks=5))
     ax.xaxis.set_minor_formatter(NullFormatter())
-    ax.set_xlabel("Median validation latency per window (ms, log scale)")
-    ax.set_ylabel("Accuracy")
+    metric = str(payload.get("overhead_metric", "recognition_validation_accuracy"))
+    if metric == "overall_qa_macro_accuracy":
+        ax.set_xlabel("Median QA-stage latency per query (ms, log scale)")
+        ax.set_ylabel("Overall QA macro accuracy")
+    else:
+        ax.set_xlabel("Median validation latency per window (ms, log scale)")
+        ax.set_ylabel("Recognition accuracy")
     ax.set_ylim(0, 1.05)
     ax.margins(x=0.12)
     ax.set_title(f"{scope_label}: accuracy versus overhead")
     ax.grid(alpha=0.2)
+    ordered = sorted(
+        ((float(point["latency_ms"]), float(point["accuracy"])) for point in points),
+        key=lambda pair: pair[0],
+    )
+    frontier = []
+    best_accuracy = -np.inf
+    for candidate in ordered:
+        if candidate[1] > best_accuracy + 1e-12:
+            frontier.append(candidate)
+            best_accuracy = candidate[1]
+    if len(frontier) >= 2:
+        ax.plot(
+            [point[0] for point in frontier], [point[1] for point in frontier],
+            linestyle="--", color="#404040", linewidth=1.1, label="Pareto frontier",
+        )
+        ax.legend(fontsize=7)
+    elif frontier:
+        ax.scatter(
+            [frontier[0][0]], [frontier[0][1]], marker="*", s=150,
+            facecolors="none", edgecolors="#404040", linewidths=1.0,
+            label="Only non-dominated point",
+        )
+        ax.legend(fontsize=7)
     path = out_dir / "figure_accuracy_vs_overhead.png"
     _finish(fig, ax, path, dataset_kind); paths.append(path)
 

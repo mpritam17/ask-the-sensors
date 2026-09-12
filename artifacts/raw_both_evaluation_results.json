@@ -7,14 +7,26 @@
   ],
   "accuracy_by_question_type": {
     "identification": 0.08,
-    "verification": 0.4,
+    "verification": 0.52,
     "duration": 0.0,
     "count": 0.08,
+    "onset": 0.0,
+    "comparison": 0.0,
+    "grounding": 0.4,
+    "open_world": 0.52
+  },
+  "grounded_accuracy_by_question_type": {
+    "identification": 0.0,
+    "verification": 0.25333333333333335,
+    "duration": 0.0,
+    "count": 0.0,
     "onset": 0.0,
     "comparison": 0.0,
     "grounding": 0.0,
     "open_world": 0.52
   },
+  "overall_accuracy_macro": 0.2,
+  "overall_grounded_accuracy_macro": 0.09666666666666668,
   "question_count_by_type": {
     "identification": 75,
     "verification": 75,
@@ -24,6 +36,34 @@
     "comparison": 75,
     "grounding": 75,
     "open_world": 75
+  },
+  "categorical_macro_f1": {
+    "identification": 0.1286549707602339,
+    "comparison": 0.0,
+    "open_world": 0.34210526315789475
+  },
+  "binary_verification": {
+    "tp": 20,
+    "fp": 6,
+    "tn": 19,
+    "fn": 30,
+    "precision_positive": 0.7692307692307693,
+    "recall_positive": 0.4,
+    "f1_positive": 0.5263157894736842,
+    "specificity": 0.76
+  },
+  "open_world_rubric": {
+    "scale": "1-5",
+    "mean": 3.56,
+    "n": 75,
+    "grader": "deterministic fixed rubric (not human-rated)",
+    "criteria": [
+      "nonempty answer and explanation",
+      "broad behavior category correct",
+      "cited evidence IoU at least 0.5",
+      "modality and channels match reference",
+      "explanation cites an interval, confidence, or measured feature"
+    ]
   },
   "numeric_mae_seconds_answered": {
     "duration": 108.59519999999999,
@@ -122,37 +162,62 @@
       0.9
     ],
     "accuracy": [
-      0.18,
-      0.14666666666666667,
-      0.12333333333333334,
-      0.11666666666666667,
-      0.1,
-      0.09333333333333334,
-      0.07666666666666666,
-      0.07333333333333333,
-      0.07333333333333333
+      0.27166666666666667,
+      0.19166666666666668,
+      0.18666666666666668,
+      0.17666666666666667,
+      0.17666666666666667,
+      0.14166666666666666,
+      0.14166666666666666,
+      0.13666666666666666,
+      0.13166666666666665
+    ],
+    "numeric_tolerance_seconds": [
+      0.0,
+      2.56,
+      5.0,
+      10.0,
+      30.0,
+      60.0,
+      120.0,
+      300.0
+    ],
+    "duration_accuracy": [
+      0.0,
+      0.0,
+      0.04,
+      0.04,
+      0.08,
+      0.16,
+      0.76,
+      1.0
+    ],
+    "onset_accuracy": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.13333333333333333,
+      0.18666666666666668
     ]
   },
   "overhead": [
     {
-      "model": "logistic",
-      "latency_ms": 0.00046696269832644226,
-      "accuracy": 0.38934996885420103,
-      "serialized_bytes": 6894
+      "model": "deterministic",
+      "latency_ms": 0.012357000002793939,
+      "accuracy": 0.2,
+      "serialized_bytes": 8276
     },
     {
-      "model": "compact_rf",
-      "latency_ms": 0.0017264057427341338,
-      "accuracy": 0.4178941775676963,
-      "serialized_bytes": 44531420
-    },
-    {
-      "model": "full_rf",
-      "latency_ms": 0.0070012235031690455,
-      "accuracy": 0.39403099923051554,
-      "serialized_bytes": 1280162941
+      "model": "Qwen guarded",
+      "latency_ms": 414.2648670624993,
+      "accuracy": 0.2,
+      "serialized_bytes": 3098963944
     }
   ],
+  "overhead_metric": "overall_qa_macro_accuracy",
   "robustness": {
     "dropped_percent": [
       0,

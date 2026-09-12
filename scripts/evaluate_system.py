@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, f1_score
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -153,11 +153,50 @@ def _score_answer(question_type, expected, predicted):
     return normalize_answer(expected.answer) == normalize_answer(predicted.answer)
 
 
-def qa_queries(true_timeline):
+def _evidence_iou(expected, predicted) -> float:
+    """Match every expected evidence interval to its best predicted overlap."""
+    if not expected.timestamps:
+        return 1.0 if not predicted.timestamps else 0.0
+    if not predicted.timestamps:
+        return 0.0
+    return float(np.mean([
+        max(interval_iou(truth, candidate) for candidate in predicted.timestamps)
+        for truth in expected.timestamps
+    ]))
+
+
+def _score_grounded(expected, predicted, answer_correct: bool) -> bool:
+    if not answer_correct:
+        return False
+    if not expected.timestamps:
+        return not predicted.timestamps
+    if not predicted.timestamps:
+        return False
+    if expected.modality != predicted.modality:
+        return False
+    if set(expected.channels) != set(predicted.channels):
+        return False
+    expected_supported = all(
+        max(interval_iou(truth, candidate) for candidate in predicted.timestamps) >= 0.5
+        for truth in expected.timestamps
+    )
+    predicted_supported = all(
+        max(interval_iou(candidate, truth) for truth in expected.timestamps) >= 0.5
+        for candidate in predicted.timestamps
+    )
+    return expected_supported and predicted_supported
+
+
+def qa_queries(true_timeline, all_classes=None):
     activities = sorted({item.activity for item in true_timeline})
     primary = activities[0]
     second = activities[1] if len(activities) > 1 else primary
+    absent = next(
+        (activity for activity in (all_classes or []) if activity not in activities),
+        primary,
+    )
     left, right = primary.replace("_", " "), second.replace("_", " ")
+    absent_text = absent.replace("_", " ")
     templates = {
         "identification": [
             "What was the main activity?",
@@ -167,7 +206,7 @@ def qa_queries(true_timeline):
         "verification": [
             f"Did the person perform {left}?",
             f"Was the person {left}?",
-            f"Has the person done {left}?",
+            f"Did the person perform {absent_text}?",
         ],
         "duration": [
             f"How long did {left} last?",
@@ -213,6 +252,8 @@ def main() -> int:
     parser.add_argument("--splits", required=True)
     parser.add_argument("--model", required=True)
     parser.add_argument("--recognition-results", required=True)
+    parser.add_argument("--efficiency", default=None)
+    parser.add_argument("--slm-efficiency", default=None)
     parser.add_argument("--out", required=True)
     args = parser.parse_args()
 
@@ -241,14 +282,21 @@ def main() -> int:
     qa_scores = {name: [] for name in (
         "identification", "verification", "duration", "count", "onset", "comparison", "grounding", "open_world"
     )}
+    grounded_scores = {name: [] for name in qa_scores}
+    categorical_pairs = {
+        name: {"expected": [], "predicted": []}
+        for name in ("identification", "comparison", "open_world")
+    }
+    verification_pairs = []
+    open_world_rubric_scores = []
     numeric_errors = {"duration": [], "onset": []}
     numeric_attempts = {"duration": 0, "onset": 0}
-    ious = []
+    evidence_ious = []
     qa_blocks = list(load_qa_recordings(processed, splits["qa"]))
     for block in qa_blocks:
         true_timeline = timeline_from_labels(block, classes)
         predicted_timeline = timeline_from_model(block, bundle, model_cfg)
-        for question_type, question in qa_queries(true_timeline):
+        for question_type, question in qa_queries(true_timeline, classes):
             expected = answer_question(question, true_timeline)
             predicted = answer_question(question, predicted_timeline)
             if question_type in numeric_errors:
@@ -260,27 +308,85 @@ def main() -> int:
                 except (ValueError, IndexError):
                     pass
             correct = _score_answer(question_type, expected, predicted)
-            if question_type == "grounding":
-                correct = bool(
-                    correct and expected.timestamps and predicted.timestamps
-                    and interval_iou(expected.timestamps[0], predicted.timestamps[0]) >= 0.5
-                    and expected.modality == predicted.modality
-                    and set(expected.channels) == set(predicted.channels)
-                )
             qa_scores[question_type].append(float(correct))
-        for truth in true_timeline:
-            candidates = [item for item in predicted_timeline if item.activity == truth.activity]
-            ious.append(max((interval_iou((truth.start, truth.end), (item.start, item.end)) for item in candidates), default=0.0))
+            grounded_scores[question_type].append(
+                float(_score_grounded(expected, predicted, bool(correct)))
+            )
+            evidence_ious.append(_evidence_iou(expected, predicted))
+            if question_type in categorical_pairs:
+                categorical_pairs[question_type]["expected"].append(
+                    normalize_answer(expected.answer)
+                )
+                categorical_pairs[question_type]["predicted"].append(
+                    normalize_answer(predicted.answer)
+                )
+            if question_type == "verification":
+                verification_pairs.append((
+                    normalize_answer(expected.answer) == "yes",
+                    normalize_answer(predicted.answer) == "yes",
+                ))
+            if question_type == "open_world":
+                explanation = predicted.explanation.lower()
+                rubric_checks = [
+                    bool(predicted.answer.strip() and predicted.explanation.strip()),
+                    bool(correct),
+                    _evidence_iou(expected, predicted) >= 0.5,
+                    (
+                        expected.modality == predicted.modality
+                        and set(expected.channels) == set(predicted.channels)
+                    ),
+                    any(
+                        token in explanation
+                        for token in ("confidence", "acc_", "gyro_", "interval", "running")
+                    ),
+                ]
+                open_world_rubric_scores.append(max(1, sum(rubric_checks)))
 
     recognition_payload = json.loads(Path(args.recognition_results).read_text(encoding="utf-8"))
+    plain_by_type = {key: float(np.mean(values)) for key, values in qa_scores.items()}
+    grounded_by_type = {
+        key: float(np.mean(values)) for key, values in grounded_scores.items()
+    }
+    overall_accuracy = float(np.mean(list(plain_by_type.values())))
+    overall_grounded_accuracy = float(np.mean(list(grounded_by_type.values())))
+
     overhead = []
-    for name, values in recognition_payload["candidate_validation"].items():
+    overhead_metric = "recognition_validation_accuracy"
+    if args.efficiency:
+        efficiency = json.loads(Path(args.efficiency).read_text(encoding="utf-8"))
+        deterministic = efficiency["tasks_1_3_batch"]
+        deterministic_latency = float(deterministic["median_latency_ms"]) / float(
+            deterministic["questions_per_run"]
+        )
+        model_bytes = int(efficiency["artifact"]["model_disk_bytes"])
         overhead.append({
-            "model": name,
-            "latency_ms": values["median_latency_ms_per_window"],
-            "accuracy": values["accuracy"],
-            "serialized_bytes": values["serialized_bytes"],
+            "model": "deterministic",
+            "latency_ms": deterministic_latency,
+            "accuracy": overall_accuracy,
+            "serialized_bytes": model_bytes,
         })
+        if args.slm_efficiency:
+            slm = json.loads(Path(args.slm_efficiency).read_text(encoding="utf-8"))
+            task4_latency = float(slm["inference"]["median_latency_ms"])
+            type_count = len(qa_scores)
+            workload_latency = (
+                deterministic_latency * (type_count - 1) + task4_latency
+            ) / type_count
+            overhead.append({
+                "model": "Qwen guarded",
+                "latency_ms": workload_latency,
+                "accuracy": overall_accuracy,
+                "serialized_bytes": model_bytes + int(slm.get("cache_bytes") or 0),
+            })
+        overhead_metric = "overall_qa_macro_accuracy"
+    else:
+        for name, values in recognition_payload["candidate_validation"].items():
+            overhead.append({
+                "model": name,
+                "latency_ms": values["median_latency_ms_per_window"],
+                "accuracy": values["accuracy"],
+                "serialized_bytes": values["serialized_bytes"],
+            })
 
     rates = [0, 5, 10, 20, 30]
     robustness = []
@@ -300,14 +406,54 @@ def main() -> int:
         robustness.append(float(np.mean(scores)))
 
     thresholds = [round(value, 1) for value in np.arange(0.1, 1.0, 0.1)]
+    numeric_tolerances = [0.0, 2.56, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0]
+    verification_counts = {
+        "tp": sum(expected and predicted for expected, predicted in verification_pairs),
+        "fp": sum((not expected) and predicted for expected, predicted in verification_pairs),
+        "tn": sum((not expected) and (not predicted) for expected, predicted in verification_pairs),
+        "fn": sum(expected and (not predicted) for expected, predicted in verification_pairs),
+    }
+    tp, fp = verification_counts["tp"], verification_counts["fp"]
+    tn, fn = verification_counts["tn"], verification_counts["fn"]
+    precision = tp / max(tp + fp, 1)
+    recall = tp / max(tp + fn, 1)
     payload = {
         "dataset_kind": dataset_kind,
         "scope": str(bundle.get("feature_source", "unknown")),
         "available_modalities": list(
             bundle.get("available_modalities", ["accelerometer", "gyroscope"])
         ),
-        "accuracy_by_question_type": {key: float(np.mean(values)) for key, values in qa_scores.items()},
+        "accuracy_by_question_type": plain_by_type,
+        "grounded_accuracy_by_question_type": grounded_by_type,
+        "overall_accuracy_macro": overall_accuracy,
+        "overall_grounded_accuracy_macro": overall_grounded_accuracy,
         "question_count_by_type": {key: len(values) for key, values in qa_scores.items()},
+        "categorical_macro_f1": {
+            key: float(f1_score(
+                values["expected"], values["predicted"], average="macro", zero_division=0
+            ))
+            for key, values in categorical_pairs.items()
+        },
+        "binary_verification": {
+            **verification_counts,
+            "precision_positive": float(precision),
+            "recall_positive": float(recall),
+            "f1_positive": float(2 * precision * recall / max(precision + recall, 1e-12)),
+            "specificity": float(tn / max(tn + fp, 1)),
+        },
+        "open_world_rubric": {
+            "scale": "1-5",
+            "mean": float(np.mean(open_world_rubric_scores)),
+            "n": len(open_world_rubric_scores),
+            "grader": "deterministic fixed rubric (not human-rated)",
+            "criteria": [
+                "nonempty answer and explanation",
+                "broad behavior category correct",
+                "cited evidence IoU at least 0.5",
+                "modality and channels match reference",
+                "explanation cites an interval, confidence, or measured feature",
+            ],
+        },
         "numeric_mae_seconds_answered": {
             key: (float(np.mean(values)) if values else None)
             for key, values in numeric_errors.items()
@@ -317,8 +463,23 @@ def main() -> int:
             for key in numeric_errors
         },
         "confusion_matrix": {"classes": classes, "matrix": matrix.tolist()},
-        "strictness": {"threshold": thresholds, "accuracy": [float(np.mean(np.asarray(ious) >= value)) for value in thresholds]},
+        "strictness": {
+            "threshold": thresholds,
+            "accuracy": [
+                float(np.mean(np.asarray(evidence_ious) >= value)) for value in thresholds
+            ],
+            "numeric_tolerance_seconds": numeric_tolerances,
+            "duration_accuracy": [
+                float(np.sum(np.asarray(numeric_errors["duration"]) <= value) / max(numeric_attempts["duration"], 1))
+                for value in numeric_tolerances
+            ],
+            "onset_accuracy": [
+                float(np.sum(np.asarray(numeric_errors["onset"]) <= value) / max(numeric_attempts["onset"], 1))
+                for value in numeric_tolerances
+            ],
+        },
         "overhead": overhead,
+        "overhead_metric": overhead_metric,
         "robustness": {"dropped_percent": rates, "accuracy": robustness},
         "provenance": {
             "model_config_sha256": bundle["config_sha256"],

@@ -20,24 +20,33 @@ from ats.recognition import load_bundle, predict_probabilities  # noqa: E402
 from ats.timeline import build_timeline  # noqa: E402
 
 
-def load_users(processed: Path, users):
-    blocks = []
+def load_users(processed: Path, users, cap_per_class=None, seed=0):
+    rng = np.random.default_rng(seed)
     for uuid in users:
         with np.load(processed / f"{uuid}.npz", allow_pickle=True) as data:
             valid = np.asarray(data["valid"], bool)
-            blocks.append({
+            labels = np.asarray(data["y"], int)[valid]
+            selected = np.arange(len(labels))
+            if cap_per_class is not None:
+                chosen = []
+                for label in np.unique(labels):
+                    indices = np.flatnonzero(labels == label)
+                    if len(indices) > cap_per_class:
+                        indices = rng.choice(indices, cap_per_class, replace=False)
+                    chosen.extend(indices.tolist())
+                selected = np.asarray(sorted(chosen), dtype=int)
+            yield {
                 "uuid": uuid,
-                "windows": np.asarray(data["windows"])[valid],
-                "y": np.asarray(data["y"], int)[valid],
-                "t_start": np.asarray(data["t_start"], float)[valid],
-                "t_end": np.asarray(data["t_end"], float)[valid],
+                "windows": np.asarray(data["windows"])[valid][selected],
+                "y": labels[selected],
+                "t_start": np.asarray(data["t_start"], float)[valid][selected],
+                "t_end": np.asarray(data["t_end"], float)[valid][selected],
                 "available_modalities": (
                     [str(item) for item in data["modalities"]]
                     if "modalities" in data.files
                     else ["accelerometer", "gyroscope"]
                 ),
-            })
-    return blocks
+            }
 
 
 def timeline_from_labels(block, classes):
@@ -113,7 +122,13 @@ def main() -> int:
     classes = list(bundle["classes"])
     model_cfg = load_config("model")
 
-    test_blocks = load_users(processed, splits["recognition_test"])
+    cap = int(load_config("labels")["imbalance"]["max_windows_per_class_per_user"])
+    seed = int(model_cfg["recognition"]["random_seed"])
+    test_blocks = list(
+        load_users(
+            processed, splits["recognition_test"], cap_per_class=cap, seed=seed + 2
+        )
+    )
     test_y = np.concatenate([block["y"] for block in test_blocks])
     test_windows = np.concatenate([block["windows"] for block in test_blocks])
     test_pred = np.argmax(
@@ -156,7 +171,6 @@ def main() -> int:
 
     rates = [0, 5, 10, 20, 30]
     robustness = []
-    seed = int(model_cfg["recognition"]["random_seed"])
     for rate in rates:
         scores = []
         for repeat in range(3):
@@ -175,6 +189,10 @@ def main() -> int:
     thresholds = [round(value, 1) for value in np.arange(0.1, 1.0, 0.1)]
     payload = {
         "dataset_kind": dataset_kind,
+        "scope": str(bundle.get("feature_source", "unknown")),
+        "available_modalities": list(
+            bundle.get("available_modalities", ["accelerometer", "gyroscope"])
+        ),
         "accuracy_by_question_type": {key: float(np.mean(values)) for key, values in qa_scores.items()},
         "confusion_matrix": {"classes": classes, "matrix": matrix.tolist()},
         "strictness": {"threshold": thresholds, "accuracy": [float(np.mean(np.asarray(ious) >= value)) for value in thresholds]},

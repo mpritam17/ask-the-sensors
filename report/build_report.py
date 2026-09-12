@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the preliminary technical report PDF from technical_report.md."""
+"""Build the technical report PDF reproducibly from technical_report.md."""
 from __future__ import annotations
 
 import re
@@ -79,7 +79,7 @@ def architecture_diagram() -> Drawing:
     d.add(Line(414, 96, 245, 96, strokeColor=navy, strokeWidth=1.2))
     d.add(Line(245, 96, 245, 81, strokeColor=navy, strokeWidth=1.2))
     d.add(Polygon([245, 81, 242, 87, 248, 87], fillColor=navy, strokeColor=navy))
-    d.add(String(235, 176, "SYSTEM UNDER IMPLEMENTATION", textAnchor="middle", fontName="Helvetica-Bold", fontSize=8, fillColor=colors.HexColor("#9C6500")))
+    d.add(String(235, 176, "IMPLEMENTED TWO-SPEED SYSTEM", textAnchor="middle", fontName="Helvetica-Bold", fontSize=8, fillColor=colors.HexColor("#548235")))
     return d
 
 
@@ -146,7 +146,7 @@ def parse_markdown(text: str, styles):
         nonlocal paragraph
         if paragraph:
             raw = " ".join(x.strip() for x in paragraph)
-            style = styles["notice"] if raw.startswith("&gt; PRELIMINARY") else styles["body"]
+            style = styles["notice"] if raw.startswith("&gt; STATUS") else styles["body"]
             raw = raw[5:] if raw.startswith("&gt; ") else raw
             story.append(Paragraph(inline_markup(raw), style))
             paragraph = []
@@ -234,7 +234,7 @@ def footer(canvas, doc):
     canvas.line(0.65 * inch, 0.52 * inch, PAGE_WIDTH - 0.65 * inch, 0.52 * inch)
     canvas.setFont("Helvetica", 7.5)
     canvas.setFillColor(colors.HexColor("#666666"))
-    canvas.drawString(0.65 * inch, 0.34 * inch, "CS60055 Hackathon Challenge 1 - Preliminary report")
+    canvas.drawString(0.65 * inch, 0.34 * inch, "CS60055 Hackathon Challenge 1 - Technical report")
     canvas.drawRightString(PAGE_WIDTH - 0.65 * inch, 0.34 * inch, f"Page {doc.page}")
     canvas.restoreState()
 
@@ -249,7 +249,7 @@ def main() -> int:
         leftMargin=0.65 * inch,
         topMargin=0.62 * inch,
         bottomMargin=0.68 * inch,
-        title="Ask the Sensors - Preliminary Technical Report",
+        title="Ask the Sensors - Technical Report",
         author="Pritam Mondal and team",
         subject="CS60055 Ubiquitous Computing Hackathon Challenge 1",
     )

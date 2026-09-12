@@ -41,9 +41,9 @@ that the scaffold stripped only `label:` and corrected the normalizer; a regress
 test now covers the official prefix. No raw-sensor-layout claim was made because the
 accelerometer and gyroscope archives were still downloading.
 
-## Verification obligations carried forward
+## Historical verification obligations
 
-These are assumptions an AI assistant could not check and the team must:
+At the preliminary-report stage, these were assumptions the team still had to check:
 
 1. **Raw file layout.** `raw_io.py` auto-detects a 3-column (x,y,z) or 4-column
    (t,x,y,z) layout because the exact ExtraSensory raw format could not be confirmed
@@ -54,3 +54,25 @@ These are assumptions an AI assistant could not check and the team must:
 3. **Original-label reliability.** The original labels are pre-cleaning. Report how many
    examples the consistency filter drops, per class — a high drop rate on one class is a
    finding, not a nuisance.
+
+## Final implementation and verification record
+
+The team completed the obligations above against the downloaded official archives.
+The raw layout was verified as four numeric columns, accelerometer source rates and
+units were measured across iPhone and Android examples, and 23 users triggered unit
+rescaling. The processed gyroscope release contains 57 user trees. The full dual build
+retained 3,535,086 valid windows and produced a user-disjoint 32/8/12/5 split.
+
+Codex implemented and ran the real accelerometer-only and dual-sensor recognizers,
+short-session QA evaluation, five measured figures, report figure embedding, build
+summaries, and deterministic efficiency benchmark. The selected dual model was tested
+on 144,056 fold-0 windows. The final suite passed 60 tests and every page of the
+12-page PDF was rendered to PNG and visually inspected for clipping and readability.
+
+Codex also installed the optional local model dependencies, downloaded
+Qwen2.5-1.5B-Instruct, repaired the WSL Python development-header prerequisite, and
+ran a 30-measurement GPU benchmark. Qwen generated on the RTX 5050, but every sampled
+answer violated the rule forbidding evidence on an `Inconclusive` claim. The validator
+rejected all 36 calls (initial, five warm-ups, and 30 measurements), and the deterministic
+grounded fallback answered. The report discloses the failure and measured cost instead
+of presenting fallback output as a successful model answer.

@@ -1,112 +1,147 @@
 # Ask the Sensors
 
-**Submission report:** [preliminary technical report (PDF)](report/technical_report.pdf)
-with its reproducible [Markdown source](report/technical_report.md) and
-[ReportLab builder](report/build_report.py). Pending experiments are labeled explicitly.
+Grounded, explainable activity question answering from wearable accelerometer and gyroscope signals.
 
-Grounded, explainable activity question answering from wearable accelerometer and
-gyroscope signals.
+CS60055 Ubiquitous Computing, IIT Kharagpur - Hackathon Challenge 1.
 
-CS60055 Ubiquitous Computing, IIT Kharagpur — Hackathon Challenge 1.
+Submission artifact: [technical report PDF](report/technical_report.pdf), with its reproducible [Markdown source](report/technical_report.md) and [ReportLab builder](report/build_report.py).
 
----
+## Status
 
-## What this system does
+The repository implements the full pipeline:
 
-Given (a) a triaxial accelerometer + gyroscope recording and (b) a natural-language
-question about it, the system returns one structured answer whose every claim is
-traceable to a specific stretch of signal:
+- official ExtraSensory download, inspection, and validity-aware 25 Hz preprocessing;
+- 98-feature raw dual-sensor and 49-feature accelerometer-only recognition;
+- user-disjoint train, validation, recognition-test, and five-user QA splits;
+- gap-aware activity intervals and deterministic Tasks 1-3;
+- local Qwen Task 4 with strict JSON/timestamp/channel validation and deterministic fallback;
+- exact-format CLI, evaluation metrics, five required figures, and efficiency benchmarks.
 
-```
-Answer:            <direct answer, or N/A>
-Activity/Event:    <activity or event, or N/A>
+`pytest -q` passes **60 tests** in the recorded WSL/Python 3.14.4 environment.
+
+### Measured real-data results
+
+| Scope | Accuracy | Balanced accuracy | Macro-F1 |
+|---|---:|---:|---:|
+| Raw accelerometer + gyroscope, 144,056 test windows | 35.99% | 37.36% | 29.78% |
+| Raw accelerometer-only fallback | 34.88% | 40.99% | 28.13% |
+| Official precomputed dual-feature baseline | 54.77% | - | 36.21% |
+
+The balanced end-to-end QA score is 13.5% over 600 held-out questions. These modest scores and all zero-valued temporal/grounding results are reported directly in the report; software completeness is not presented as model accuracy.
+
+Qwen2.5-1.5B-Instruct loaded in FP16 on the RTX 5050. In the recorded 30-run benchmark its generated answers violated the evidence contract, so all 36 calls (one initial, five warm-ups, 30 measured) were rejected and the grounded fallback answered. This is the intended safety behavior, not a successful SLM-quality claim.
+
+## Output contract
+
+Every answer uses this field order:
+
+```text
+Answer:              <direct answer to the query, or N/A>
+Activity/Event:      <activity or event, or N/A>
 Evidence:
-  Timestamp(s):    <time range(s), or N/A>
-  Sensor Modality: <accelerometer, gyroscope, both, or N/A>
-  Sensor Channel(s): <Acc X/Y/Z, Gyro X/Y/Z, All, or N/A>
-Explanation:       <reasoning grounded in the observed signal, or N/A>
+    Timestamp(s):      <time range or ranges, or N/A>
+    Sensor Modality:   <accelerometer, gyroscope, both, or N/A>
+    Sensor Channel(s): <Acc X/Y/Z, Gyro X/Y/Z, All, or N/A>
+Explanation:         <reasoning grounded in the observed signal, or N/A>
 ```
 
-**Time base.** Every timestamp this system emits is **seconds from the start of the
-recording**, where second 0 is the first retained example. The absolute Unix time of
-second 0 is stored alongside each processed recording (`t0_unix`) so answers can be
-converted to clock time on request, but the reported convention never changes.
+Timestamps are seconds from the first retained sample. A supported answer cites the interval used to compute it. Unsupported questions return `Inconclusive`/`N/A`; rejected model output is never formatted for the user.
 
-## Architecture: a two-speed system
+## Architecture
 
-Most questions in Tasks 1–3 are deterministic computations over a detected activity
-timeline, not open-ended reasoning. Asking a language model "how many seconds of
-walking are there" invites it to approximate an arithmetic sum we can compute exactly.
-So we compute them exactly, and reserve the language model for the one tier that
-genuinely needs semantic reasoning.
-
-```
-  raw acc + gyro          ┌──────────────┐   ┌─────────────┐   ┌────────────┐
-  (40 Hz, 20 s sessions)→ │ Preprocessing │ → │ Recognition │ → │ Aggregation│
-                          │ resample 25Hz │   │ 7-class per │   │ windows →  │
-                          │ + validity    │   │ window      │   │ intervals  │
-                          └──────────────┘   └─────────────┘   └─────┬──────┘
-                                                                     │ timeline
-   question ─────────────→ ┌──────────────┐                          │
-                           │ Query router │ ─── fast path (T1–3) ────┤
-                           │ intent class │      deterministic        │
-                           └──────┬───────┘                          │
-                                  └──────── slow path (T4) ──────────┤
-                                            SLM over serialised      │
-                                            interval evidence        │
-                                                                     ▼
-                                                        ┌────────────────────┐
-                                                        │ Output formatter   │
-                                                        └────────────────────┘
+```text
+raw acc + gyro -> 25 Hz preprocessing -> 7-class recognition -> activity timeline
+                                                                    |
+question -> intent router -> Tasks 1-3 deterministic operations ----+-> validator -> answer
+                         \-> Task 4 Qwen over interval summaries ----/
+                                      \-> grounded fallback on rejection
 ```
 
-Three consequences worth stating up front, because they are the design argument:
+Tasks 1-3 perform duration, count, onset, verification, identification, comparison, and grounding operations directly over intervals. Qwen receives structured interval/feature summaries rather than raw samples.
 
-1. **Fast-path answers are provably correct given the timeline.** A duration is a sum
-   over intervals, not a generation. Errors can only come from the recognition layer,
-   which is measurable on its own.
-2. **Evidence citation is free and exact.** The evidence *is* the data structure the
-   answer was computed from, so cited intervals cannot drift from the answer.
-3. **Most queries cost near zero.** The SLM runs on the open-world tier only, which is
-   what makes the accuracy-versus-overhead curve interesting rather than flat.
-
-## Setup
+## Quick setup
 
 ```bash
 git clone https://github.com/mpritam17/ask-the-sensors.git
 cd ask-the-sensors
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.lock  # exact environment used for verification
-pip install -e .            # installs the `ats` package from src/
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.lock
+python -m pip install -e .
+pytest -q
 ```
 
-Python 3.9+ is supported. The recorded verification environment is WSL Ubuntu with
-Python 3.14.4 because Python 3.12 was not installed on the available machine. PyTorch,
-Transformers, and Accelerate are optional and needed only for the Qwen Task 4 path.
+The core pipeline works without PyTorch. For the optional local Qwen path:
 
-## Current implementation status
+```bash
+python -m pip install -r requirements-slm.txt
+```
 
-- Preprocessing, feature extraction, three recognizers, timeline aggregation, Tasks
-  1-3, grounded Task 4 fallback/Qwen validation, evaluation, figures, and efficiency
-  benchmarking are implemented.
-- `pytest -q` currently passes 50 tests, including end-to-end CLI, downloader-recovery,
-  official-schema, preliminary-report-contract, and grounded-output checks.
-- Saved synthetic smoke-test outputs are under `artifacts/` and
-  `report/figures/synthetic/`; all are explicitly stamped synthetic.
-- A real, user-disjoint baseline using the official precomputed accelerometer and
-  gyroscope features is complete: the compact RF reached 54.77% accuracy and 36.21%
-  macro-F1 on 54,323 examples from the 12 official fold-0 test users. This is explicitly a
-  sensor-feature recognition baseline, not raw-window or end-to-end QA evaluation.
-- Raw-archive end-to-end evaluation and the Qwen weight run remain pending. The
-  preliminary PDF therefore retains honest pending-result panels for those results.
+## Run the required CLI
 
-## Reproducing our results
+The recording CSV must contain `timestamp,acc_x,acc_y,acc_z,gyro_x,gyro_y,gyro_z`; the questions file has one question per line.
 
-### Option A — smoke test, no download (about 2 minutes)
+```bash
+python scripts/answer_questions.py \
+  --recording demo/recording.csv \
+  --questions demo/questions.txt \
+  --model artifacts/raw_both_recognizer.joblib \
+  --out answers.txt \
+  --no-slm
+```
 
-Verifies the whole pipeline runs end to end on synthetic recordings shaped exactly like
-ExtraSensory. **Numbers produced this way are not results**; every figure generated from
-synthetic input is stamped SYNTHETIC.
+Remove `--no-slm` only after installing the optional dependencies and downloading/caching Qwen. If no model is supplied, the command emits a conspicuous warning and uses a transparent demonstration heuristic; that path is not used for reported accuracy.
+
+## Reproduce the official raw-data results
+
+Keep the roughly 56 GB of extracted sensor data outside Git/OneDrive.
+
+```bash
+DATA_ROOT=/path/to/extrasensory
+PROCESSED_ROOT=/path/to/processed_both
+
+python scripts/fetch_extrasensory.py --root "$DATA_ROOT" \
+  --only original_labels features_labels cv_folds
+python scripts/fetch_extrasensory.py --root "$DATA_ROOT" --only raw_acc
+python scripts/fetch_extrasensory.py --root "$DATA_ROOT" \
+  --timeout-seconds 180 --only proc_gyro
+python scripts/inspect_raw_layout.py --root "$DATA_ROOT"
+
+python scripts/build_dataset.py --raw-root "$DATA_ROOT" \
+  --out "$PROCESSED_ROOT" --modalities both
+python scripts/make_splits.py --processed "$PROCESSED_ROOT" \
+  --cv-folds "$DATA_ROOT/cv_folds" \
+  --out artifacts/raw_both_split_manifest.json
+python scripts/train_recognizer.py --processed "$PROCESSED_ROOT" \
+  --splits artifacts/raw_both_split_manifest.json \
+  --model artifacts/raw_both_recognizer.joblib \
+  --results artifacts/raw_both_recognition_results.json
+python scripts/evaluate_system.py --processed "$PROCESSED_ROOT" \
+  --splits artifacts/raw_both_split_manifest.json \
+  --model artifacts/raw_both_recognizer.joblib \
+  --recognition-results artifacts/raw_both_recognition_results.json \
+  --out artifacts/raw_both_evaluation_results.json
+python scripts/generate_figures.py \
+  --results artifacts/raw_both_evaluation_results.json \
+  --out report/figures/real_raw_both
+python scripts/benchmark_efficiency.py \
+  --model artifacts/raw_both_recognizer.joblib \
+  --recording-npz "$PROCESSED_ROOT/00EABED2-271D-49D8-B599-1D4A09240601.npz" \
+  --out artifacts/raw_both_efficiency.json --runs 30
+```
+
+The downloader resumes safely, detects a server that ignores HTTP Range, verifies ZIP integrity, prevents path traversal during extraction, and writes completion markers only after success.
+
+### Optional Qwen runtime benchmark
+
+```bash
+HF_HOME=/path/to/huggingface-cache \
+python scripts/benchmark_slm.py --out artifacts/slm_efficiency.json --runs 30
+```
+
+## Synthetic smoke workflow
+
+This verifies the entire pipeline without downloading ExtraSensory. Synthetic artifacts are stamped `synthetic` and must not be cited as real results.
 
 ```bash
 python scripts/make_synthetic_data.py --users 8 --scale 0.06 --seed 41
@@ -122,123 +157,25 @@ python scripts/evaluate_system.py \
   --model artifacts/synthetic_recognizer.joblib \
   --recognition-results artifacts/synthetic_recognition_results.json \
   --out artifacts/synthetic_evaluation_results.json
-python scripts/generate_figures.py \
-  --results artifacts/synthetic_evaluation_results.json \
-  --out report/figures/synthetic
-python scripts/benchmark_efficiency.py \
-  --model artifacts/synthetic_recognizer.joblib \
-  --recording-npz data/processed/synthetic/00000004-0000-4000-8000-000000000004.npz \
-  --out artifacts/synthetic_efficiency.json --runs 30
-pytest -q
 ```
-
-### Option B — the real thing
-
-```bash
-# 1. Fetch. Small files first; the raw archives are ~15 GB and are fetched
-#    sequentially because the dataset site asks for one download at a time.
-DATA_ROOT=/home/$USER/datasets/extrasensory
-python scripts/fetch_extrasensory.py --root "$DATA_ROOT" \
-  --only original_labels features_labels cv_folds
-python scripts/summarize_official_labels.py --root "$DATA_ROOT"
-python scripts/train_precomputed_baseline.py --root "$DATA_ROOT" \
-  --modalities both \
-  --model artifacts/precomputed_real_both_recognizer.joblib \
-  --splits artifacts/precomputed_real_split_manifest.json \
-  --results artifacts/precomputed_real_both_results.json
-
-# The next two archives are needed for the end-to-end raw-window experiment.
-python scripts/fetch_extrasensory.py --root "$DATA_ROOT" --only raw_acc
-python scripts/fetch_extrasensory.py --root "$DATA_ROOT" \
-  --timeout-seconds 180 --only proc_gyro
-
-# 2. Confirm the on-disk layout (run once; paste the output into the report)
-python scripts/inspect_raw_layout.py --root "$DATA_ROOT"
-
-# 3. Build windowed, labelled arrays
-python scripts/build_dataset.py --raw-root "$DATA_ROOT"
-python scripts/make_splits.py --cv-folds "$DATA_ROOT/cv_folds"
-python scripts/train_recognizer.py
-```
-
-The downloader resumes safely, detects servers that ignore HTTP Range, verifies every
-ZIP before extraction, and reports actionable recovery commands. If the much larger
-gyroscope endpoint is temporarily unavailable, a clearly scoped accelerometer-only
-raw baseline can be built without inventing gyro evidence:
-
-```bash
-python scripts/build_dataset.py --raw-root "$DATA_ROOT" \
-  --out "$DATA_ROOT/processed_acc" --modalities acc
-python scripts/train_recognizer.py --processed "$DATA_ROOT/processed_acc" \
-  --splits artifacts/raw_acc_split_manifest.json \
-  --model artifacts/raw_acc_recognizer.joblib \
-  --results artifacts/raw_acc_recognition_results.json
-```
-
-### Running on a fresh recording
-
-```bash
-python scripts/answer_questions.py \
-  --recording demo/recording.csv \
-  --questions demo/questions.txt \
-  --out answers.txt \
-  --no-slm
-```
-
-Accepts a CSV with columns `timestamp, acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z`
-(any sampling rate; it is resampled to 25 Hz) and one question per line. Writes answers
-in the required format. Pass `--model artifacts/recognizer.joblib` after real-data
-training. If no recognizer exists, the CLI emits a conspicuous warning and uses a
-transparent demo heuristic; that output is never a reported accuracy result.
-
-Omit `--no-slm` only after installing the optional model dependencies. Qwen receives
-structured intervals/features rather than raw samples, and its JSON is rejected if a
-timestamp lies outside the supplied evidence.
 
 ## Repository layout
 
-```
-configs/            every tunable parameter, with its rationale inline
-  data.yaml           sampling, windowing, split
-  labels.yaml         the 7-class mapping and imbalance strategy
-src/ats/
-  config.py           config loading
-  data/               preprocessing: download, raw I/O, resampling, labels,
-                      windowing, dataset building, synthetic generator
-  features/           engineered feature extraction        (Phase 3)
-  recognition/        per-window 7-class classifier         (Phase 3)
-  timeline/           window → interval aggregation         (Phase 4)
-  qa/                 query router + deterministic answers  (Phase 5)
-  slm/                open-world reasoning path             (Phase 6)
-  eval/               metrics and the five required figures (Phase 7)
-  efficiency/         size, memory, latency, energy         (Phase 8)
-scripts/            runnable entry points
-tests/              unit tests; `pytest -q` from the repo root
-docs/               design decisions, AI-use log
-report/             the technical report and its figures
-data/               git-ignored; raw data is never committed
+```text
+artifacts/          committed models, split manifests, measurements, result JSON
+configs/            sampling/window/label configuration
+demo/               small recording and questions
+docs/               design decisions, data inspection, and AI-use log
+report/             report source/PDF and real/synthetic figures
+scripts/            download, build, train, evaluate, benchmark, and CLI entry points
+src/ats/            data, features, recognition, timeline, QA, SLM, eval, efficiency
+tests/              unit and integration tests
 ```
 
-## Data
+Raw data, expanded archives, virtual environments, downloaded SLM weights, and oversized experimental models are excluded from Git.
 
-ExtraSensory (Vaizman, Ellis & Lanckriet, *IEEE Pervasive Computing* 16(4), 2017),
-<http://extrasensory.ucsd.edu/>. Downloaded by `scripts/fetch_extrasensory.py`; never
-committed to this repository.
+## Data and integrity
 
-Two properties of the dataset shape everything downstream, and are documented in
-`docs/DESIGN_DECISIONS.md`:
+ExtraSensory: Vaizman, Ellis, and Lanckriet, *IEEE Pervasive Computing* 16(4), 2017, <http://extrasensory.ucsd.edu/>. The original label release is used because the cleaned release merges standing in place and standing/moving into `OR_standing`.
 
-- **Recordings are not continuous.** The collection app recorded a 20-second session
-  once per minute, so a "recording" is a sequence of 20 s observations with 40 s gaps.
-  Durations and interval boundaries are therefore estimated at minute resolution, and
-  the aggregation layer must say so rather than pretend to continuous coverage.
-- **The seven challenge classes are ExtraSensory's own mutually-exclusive "main
-  activity" category**, which survives intact only in the *original* label release. The
-  cleaned release merges "standing in place" and "standing and moving" into a single
-  `OR_standing` label and so cannot express two of our seven classes.
-
-## Academic integrity
-
-External resources are cited at the point of use in the source, and collectively in the
-report. AI assistance is logged continuously in `docs/AI_USE_LOG.md` and disclosed in
-the report as required by the CS60055 policy.
+Claude (Anthropic) assisted with the initial scaffold and preprocessing foundation. OpenAI Codex assisted with audit, implementation, testing, experiments, and the report. Details and verification actions are recorded in [docs/AI_USE_LOG.md](docs/AI_USE_LOG.md).

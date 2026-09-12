@@ -1,7 +1,8 @@
 # ExtraSensory data inspection record
 
-This file distinguishes observations made from downloaded official files from
-assumptions that still require the large sensor archives.
+This file records observations made directly from the downloaded official
+metadata and raw sensor archives. Counts here are preprocessing evidence unless
+an entry explicitly names a recognition or QA result artifact.
 
 ## Original-label metadata - verified 2026-09-11
 
@@ -99,7 +100,29 @@ class weighting, and per-user sampling caps.
   40.0 Hz median and effective rate, a 0.025-second 95th-percentile gap, and a
   median vector magnitude of about 0.002.
 
-## Still pending
+## Full dual-sensor build - verified 2026-09-12
 
-- Aggregate dual-sensor coverage/build statistics and official-fold
-  recognition/QA results.
+- The indexed build produced reports for 60 users; 57 users have usable dual
+  windows and three have no compatible gyroscope data.
+- The label files contain 307,220 retained target examples. The build visited
+  307,206 examples, used 270,871, dropped 16,437 for a missing required sensor,
+  and dropped 19,912 below the 75% coverage threshold.
+- Resampling/windowing produced 3,792,194 candidate windows and retained
+  3,535,086 valid windows: 1,207,591 lying, 1,567,707 sitting, 94,731 standing
+  in place, 335,506 standing and moving, 258,786 walking, 16,207 running, and
+  54,558 bicycling.
+- The split manifest contains 32 train, 8 validation, 12 official fold-0
+  recognition-test, and 5 QA users, mutually exclusive by UUID.
+- `artifacts/raw_both_build_summary.json` records the manifest checksum and
+  aggregate counts without committing any raw sample arrays.
+
+## Measured raw dual-sensor results - verified 2026-09-12
+
+- The selected balanced logistic model uses 98 features and is 8,276 bytes.
+- On 144,056 untouched-user windows it reached 35.99% accuracy, 37.36%
+  balanced accuracy, and 29.78% macro-F1.
+- The end-to-end QA set contains 25 short held-out recordings and 600 balanced
+  questions. Macro accuracy across the eight types is 13.5%; detailed zero and
+  nonzero outcomes are retained in `artifacts/raw_both_evaluation_results.json`.
+- Five report figures were generated only from that saved real-data JSON under
+  `report/figures/real_raw_both/`.

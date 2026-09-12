@@ -4,48 +4,46 @@
 
 **CS60055 Ubiquitous Computing - Hackathon Challenge 1**
 
-**Preliminary implementation report - 11 September 2026**
+**Technical implementation report - 12 September 2026**
 
-> PRELIMINARY STATUS NOTICE: This revision documents the implemented repository scaffold and preprocessing pipeline, together with the planned recognition, question-answering, and evaluation design. Recognition, real-data evaluation, and small-language-model experiments are still in progress. Every unavailable result is marked explicitly; no synthetic quantity is presented as a measured result.
+> STATUS: End-to-end preprocessing, seven-class recognition, timeline construction, Tasks 1-3, validated Task 4 fallback, evaluation, and the required CLI are implemented. Results in this revision come from official ExtraSensory files or explicitly identified runtime checks. The measured scores are modest and are reported without inflation.
 
 ### Team and contribution statement
 
 | Member | Contribution recorded in this revision |
 |---|---|
-| 23CS30041 - Pritam Mondal | Repository integration, design review, implementation verification, report preparation, and planned end-to-end integration. |
-| MEMBER_2_ROLL - MEMBER_2_NAME | REPLACE BEFORE FINAL: contribution information has not yet been supplied. |
-| MEMBER_3_ROLL - MEMBER_3_NAME | REPLACE BEFORE FINAL: contribution information has not yet been supplied. |
+| 23CS30041 - Pritam Mondal | Repository integration, experiment supervision, design review, implementation verification, report preparation, and end-to-end submission. |
+| MEMBER_2_ROLL - MEMBER_2_NAME | PLACEHOLDER: replace with the second member and contribution before the final administrative submission. |
+| MEMBER_3_ROLL - MEMBER_3_NAME | PLACEHOLDER: replace with the third member and contribution before the final administrative submission. |
 
-### Submission snapshot
+### Abstract
 
-This report accompanies the public source repository `https://github.com/mpritam17/ask-the-sensors`. The repository is intended to remain reproducible: raw ExtraSensory data and downloaded language-model weights are excluded, while download, preprocessing, training, evaluation, and inference entry points are kept in source control.
+Ask the Sensors turns phone accelerometer and gyroscope recordings into answers that cite the signal intervals used to obtain them. The completed system resamples irregular raw streams to 25 Hz, constructs validity-aware windows, extracts 98 time/frequency features, recognizes seven activities, merges predictions into gap-aware intervals, and routes questions to deterministic or language-model-assisted reasoning. Evaluation is user-disjoint. On 144,056 raw dual-sensor test windows the selected 8.1 KiB balanced logistic model achieved 35.99% accuracy, 37.36% balanced accuracy, and 29.78% macro-F1. The corresponding official precomputed-feature baseline reached 54.77% accuracy and 36.21% macro-F1, showing the remaining cost of reconstructing labels and windows from noisy raw sessions. The strict end-to-end QA score was 13.5% over 600 balanced questions; this low result exposes timeline fragmentation and class confusion rather than hiding them. All 60 automated tests pass.
 
-### Document status
+### Deliverables
 
-- Implemented and tested: configuration, raw-file parsing, label mapping, resampling, missing-data validity masks, windowing, synthetic data generation, and dataset assembly.
-- Verified: 20 committed tests passed in an isolated Python environment.
-- In progress: feature extraction, activity recognition, activity timeline construction, Tasks 1-4, real-data metrics, efficiency measurements, and the five required figures.
+The repository contains reproducible download/build/train/evaluate scripts, the selected model and schemas, saved results, five generated figures, a schema-conforming question-answering CLI, a small demonstration, this report source, and its reproducibly generated PDF. Raw data and Qwen weights are deliberately excluded from Git.
 
 ---PAGE---
 
-# 1. Abstract and Problem Formulation
+# 1. Problem Formulation and Output Contract
 
-Wearable accelerometers and gyroscopes provide continuous evidence about motion, but their raw samples are not directly useful to a caregiver or clinician. A conventional activity classifier also leaves an important gap: a sequence of labels does not by itself answer how long an activity lasted, how often it occurred, when it began, or why the recorded signal supports the conclusion. The challenge therefore asks for a sensor question-answering service that converts a natural-language query and a multimodal recording into a direct answer with traceable evidence.
+The challenge requires a system that receives a natural-language question and time-stamped wearable signals, then answers both what happened and which sensor evidence supports the answer. A window classifier alone is insufficient: duration, counts, onset, comparison, and grounded explanation require explicit temporal operations.
 
-The proposed system separates signal computation from language generation. Sensor processing identifies activity evidence in 2.56-second windows. A timeline layer turns those predictions into intervals, durations, counts, and transitions. Deterministic operations answer identification, verification, duration, count, onset, and comparison questions. A small language model is reserved for open-world questions, and even there it receives only validated interval and feature summaries. A final validator prevents unsupported timestamps or modalities from entering the response.
+### 1.1 Signal and activity space
 
-### 1.1 Required sensor and activity space
+The supported input has triaxial acceleration and angular velocity. Both modalities are brought to 25 Hz in the fixed channel order `Acc X, Acc Y, Acc Z, Gyro X, Gyro Y, Gyro Z`. The recognition vocabulary contains exactly seven activities: lying down, sitting, standing in place, standing and moving, walking, running, and bicycling. The two standing labels are retained separately because the assignment distinguishes them and the original ExtraSensory labels provide both, even though a cleaned derived label merges them.
 
-The input contains a timestamped triaxial accelerometer and triaxial gyroscope. Both streams are resampled to 25 Hz. The fixed recognition vocabulary is: lying down, sitting, standing in place, standing and moving, walking, running, and bicycling. These classes are imbalanced and some are difficult to distinguish using a freely oriented phone, which motivates user-disjoint evaluation and macro-averaged metrics.
+### 1.2 Four QA tiers
 
-### 1.2 Four question tiers
+1. **Activity recognition:** identify an activity or verify a named activity.
+2. **Temporal reasoning:** compute duration, occurrence count, first onset, and pairwise duration comparison.
+3. **Evidence grounding:** attach interval, modality, channels, confidence, and signal-derived explanation to the computed answer.
+4. **Open-world reasoning:** interpret behavior-level wording while refusing claims unsupported by the recognized timeline.
 
-1. **Activity identification:** open identification and binary verification.
-2. **Temporal and quantitative reasoning:** duration, count, occurrence time, and activity comparison.
-3. **Evidence grounding:** answer correctness plus the supporting interval, modality, channels, and signal-based reasoning.
-4. **Open-world reasoning:** behavior-level interpretations beyond a fixed class name, while remaining grounded in observed evidence.
+### 1.3 Exact answer schema
 
-### 1.3 Uniform answer contract
+Every question produces the following field order. Times are seconds from the first usable retained sample, not Unix clock values.
 
 ```text
 Answer:              <direct answer to the query, or N/A>
@@ -57,287 +55,291 @@ Evidence:
 Explanation:         <reasoning grounded in the observed signal, or N/A>
 ```
 
-All emitted timestamps use seconds from the start of the retained recording. An absolute Unix origin is stored in processed data only to permit later conversion to clock time.
+### 1.4 Safety and correctness invariant
+
+The interval used in an arithmetic result is the same interval emitted as evidence. A supported claim cannot have an empty evidence range; an inconclusive claim cannot cite a range as if it supported an answer. Low-coverage windows are discarded and low-confidence predictions become unknown. The open-world generator cannot add a timestamp, modality, or channel not contained in its supplied evidence.
+
+### 1.5 Scope
+
+This is an activity-evidence system, not a medical diagnostic device. Terms such as strenuous or unsteady are treated as observable motion patterns under declared rules. The system does not infer disease, injury, intent, or clinical state.
 
 ---PAGE---
 
-# 2. Dataset and Data Challenges
+# 2. Dataset and Measured Data Characteristics
 
-Development uses ExtraSensory, a naturalistic dataset collected from sixty users carrying smartphones and wearing smartwatches during daily life [1,2]. This challenge restricts the input modalities to accelerometer and gyroscope. Unlike a laboratory activity dataset, ExtraSensory contains irregular sampling, missing sensor sessions, user-dependent device placement, overlapping self-reports, and a strongly skewed activity distribution. These are treated as model and evaluation constraints rather than removed silently.
+Experiments use the official ExtraSensory naturalistic context-recognition release from UC San Diego [1,2]. Sixty participants self-reported daily activities while phone and watch sensors were recorded. This setting supplies realistic placement variation and gaps, but also noisy overlapping labels and severe class imbalance.
 
-### 2.1 Observation structure
+### 2.1 Label audit
 
-ExtraSensory phone sensors are organized as short sessions associated with per-user example timestamps. The current design assumes approximately 20 seconds of samples per observed session and a nominal source rate near 40 Hz. Successive examples may be separated by unobserved time. The system therefore does not interpolate across inter-session gaps. Duration is accumulated only over supported intervals, and a timeline gap remains a gap rather than manufactured evidence.
+The original per-user labels contain 377,346 examples. Applying the seven-class, single-main-activity filter retains 307,220 labelled examples. Label counts before raw-sensor coverage filtering are 104,210 lying down; 136,356 sitting; 8,028 standing in place; 29,754 standing and moving; 22,517 walking; 1,335 running; and 5,020 bicycling. The original labels are authoritative for the two standing classes. Cleaned labels are used only as a contradiction check because their `OR_standing` field cannot reconstruct that distinction.
 
-### 2.2 Label source
+### 2.2 Raw archives and observed layout
 
-The seven challenge activities correspond to the original ExtraSensory main-activity choices. The cleaned release collapses `STANDING_IN_PLACE` and `STANDING_AND_MOVING` into `OR_standing`, so it cannot alone preserve the required seven-way target. The pipeline therefore reads the original per-user labels and uses cleaned labels as a consistency check. Examples with no main activity, multiple main activities, or an explicit cleaned-label contradiction are excluded. Unknown cleaned values are tolerated instead of being interpreted as negatives.
+The official raw accelerometer archive expands to about 29 GB and contains 377,056 session files for all 60 users. A measured iPhone example had a 33.9 Hz median rate, 23.13 s duration, and approximately 0.997 g median magnitude. A measured Android example had a 49.65 Hz rate, 16.09 s duration, and 10.02 m/s2 magnitude; 23 users therefore required unit rescaling by standard gravity. The processed gyroscope archive is 9.33 GB compressed and expands to about 27 GB, with 359,912 files for 57 users. A sampled gyro session contained 800 points over 19.97 s at 40 Hz with a 0.025 s 95th-percentile gap.
 
-### 2.3 Imbalance and generalization
+### 2.3 Dual-sensor build
 
-Sedentary classes dominate the dataset, while running and bicycling are rare. The planned recognition layer uses balanced class weights and caps the number of windows contributed by one user and class. Train, validation, recognition-test, and end-to-end QA sets are separated by user. This prevents overlapping windows from the same session, or idiosyncratic gait and phone placement from one person, leaking across partitions.
+The indexed builder scans each sensor tree once and aligns files by user and example timestamp. Of 307,206 examples visited, 270,871 supplied usable dual-sensor input. Fourteen labelled examples had no indexed accelerometer file, 16,437 examples lacked a required sensor, and 19,912 were rejected for low coverage. Three users had no usable dual windows.
 
-### 2.4 Verification obligations
+After resampling and 64-sample windows with a 32-sample hop, 3,535,086 of 3,792,194 candidate windows are valid. Their class distribution is shown below.
 
-The large raw archives were not present when this preliminary report was generated. Before reporting real results, the team will run the layout inspection script and record: archive nesting, file suffixes, column count, whether timestamps are explicit, measured sampling rate, accelerometer units, missing-modality frequency, rescaling counts, and per-class label-filter drops.
+| Activity | Valid windows | Share |
+|---|---:|---:|
+| Lying down | 1,207,591 | 34.16% |
+| Sitting | 1,567,707 | 44.35% |
+| Standing in place | 94,731 | 2.68% |
+| Standing and moving | 335,506 | 9.49% |
+| Walking | 258,786 | 7.32% |
+| Running | 16,207 | 0.46% |
+| Bicycling | 54,558 | 1.54% |
 
-| Item | Preliminary status |
-|---|---|
-| Original and cleaned label logic | Implemented; real files pending inspection |
-| 25 Hz resampling and missing-data mask | Implemented; synthetic tests passed |
-| Full raw accelerometer and gyroscope build | PENDING REAL-DATA EXPERIMENT |
-| User-disjoint class distribution | PENDING REAL-DATA EXPERIMENT |
+Self-report timestamps describe session-level context, not frame-perfect boundaries. Consequently, raw windows near transitions may inherit a coarse label, and missing sessions must never be interpolated into activity evidence.
 
 ---PAGE---
 
-# 3. System Architecture
+# 3. Architecture and Preprocessing
 
 [ARCHITECTURE]
 
-**Figure 1.** Planned two-speed architecture. Components with implemented preprocessing code are shown first; recognition, timeline, deterministic QA, and the validated SLM path are under implementation in this preliminary revision.
+**Figure 1.** Implemented two-speed architecture. Recognition and timeline construction are shared; deterministic Tasks 1-3 avoid generative arithmetic, while Task 4 is schema-validated before formatting.
 
-### 3.1 Two-speed reasoning
+### 3.1 Raw parsing and time alignment
 
-Tasks 1-3 are structured computations over an activity timeline. For example, walking duration is a sum of supported walking intervals, and a running onset is the start of the first supported running interval. Delegating such operations to a generative model would make exact arithmetic and evidence alignment less reliable. The proposed fast path therefore uses deterministic query routing and timeline operations.
+Readers accept sensor files containing either `x,y,z` with an implied time base or `t,x,y,z` with explicit times. Samples are sorted, duplicate timestamps removed, and non-finite or empty inputs handled without indexing failures. Each sensor stream is linearly interpolated to a 25 Hz grid, but an interpolated sample is valid only when a real observation is within 0.08 s. Combined dual-sensor validity requires both modalities. The timestamp origin is rebased to the first example that survives sensor and coverage checks, correcting the earlier label-origin defect.
 
-Task 4 requires interpretation of broader behaviors that may not have a fixed classifier label. The slow path supplies a small language model with a serialized timeline, measured signal features, and an allow-list of evidence intervals. Generated output is accepted only after schema and grounding validation. A rule-based fallback handles a small set of safety-relevant patterns when model loading fails or generation is unsupported.
+### 3.2 Unit handling and window formation
 
-### 3.2 Grounding invariant
+Per-session acceleration magnitude distinguishes approximately-g inputs from approximately-m/s2 inputs; the latter are divided by 9.80665. No such heuristic is applied to gyroscope values. Windows contain 64 samples (2.56 s) with 32-sample hops (1.28 s), class index, validity fraction, start/end seconds, source example timestamp, and channel matrix. This overlap increases temporal resolution while retaining enough samples for spectral features.
 
-The interval used to calculate an answer is also the interval emitted as evidence. This eliminates a common failure mode in which an explanation cites a different time span from the one used by the computation. Evidence channel names come from feature provenance. Static posture explanations emphasize accelerometer orientation and variance; gait explanations combine acceleration cadence and gyroscope motion; unsteadiness reasoning emphasizes irregular gyroscope energy.
+### 3.3 Reproducible split
 
-### 3.3 Failure behavior
+The official fold-0 users are preserved as a 12-user recognition test set. The remaining usable users are deterministically divided into 32 training, 8 validation, and 5 QA users. Sets are mutually exclusive by UUID. Model selection sees only validation users; the 144,056 test windows are evaluated after selection. QA uses five short recordings per QA user, centered on label transitions when available, with a target of 12 consecutive example sessions per recording. Each snippet is rebased to zero to prevent multi-day wall-clock gaps from becoming false durations.
 
-Low-coverage windows are excluded rather than guessed. Low-confidence predictions become unknown. If a question cannot be routed safely, the system returns `Inconclusive` or `N/A` in the required schema. The language model cannot introduce an interval not present in its evidence input, and malformed structured output is rejected.
+### 3.4 Verification
 
----PAGE---
-
-# 4. Implemented Preprocessing
-
-The repository currently implements a reproducible preprocessing path from ExtraSensory-style files to compressed per-user window arrays.
-
-### 4.1 Raw input handling
-
-The raw reader recursively discovers files by sensor-name fragments and timestamp-bearing filenames. It accepts either `x,y,z` files with an implied nominal time axis or files containing `t,x,y,z`. Absolute or relative timestamps are normalized to the start of each session. Empty, truncated, and non-finite files are treated as unavailable sensor observations.
-
-### 4.2 Irregular resampling and validity
-
-Samples are sorted and duplicate timestamps are removed. Each channel is linearly interpolated on a 25 Hz grid, but interpolation values are not automatically trusted. A grid sample is valid only when a real input sample lies within 0.08 seconds. Accelerometer and gyroscope streams are aligned into the fixed order `Acc X, Acc Y, Acc Z, Gyro X, Gyro Y, Gyro Z`; combined validity requires support from both modalities.
-
-### 4.3 Units and windows
-
-Accelerometer magnitude is inspected per example. Values that resemble metres per second squared are divided by standard gravity, producing a consistent gravity-unit representation. Twenty-second sessions yield fourteen 64-sample windows with a 32-sample hop. Each window stores start/end time, validity fraction, example timestamp, class index, and the six signal channels.
-
-### 4.4 Synthetic reproducibility
-
-The synthetic generator creates seven physically motivated placeholder profiles with sampling jitter, dropouts, missing examples, class imbalance, and the same file organization expected by the reader. It exists only to test data flow. Synthetic outputs are not evidence of real-world accuracy.
-
-### 4.5 Verified tests and known corrections
-
-An isolated run of the committed suite completed with **20 tests passed**. The tests cover label normalization and filtering, irregular resampling, dropout masks, multimodal alignment, window counts and timestamps, and a synthetic raw-to-window build.
-
-Two issues were identified during audit and are being corrected: a truly empty timestamp array reaches an indexing operation before the empty-input return, and the recording origin is currently chosen from the earliest retained label rather than the first sensor example that survives coverage filtering. Neither issue is hidden in the preliminary status.
+The test suite now contains **60 passing tests**. Coverage includes label filtering, empty and irregular resampling, unit normalization, multimodal alignment, missing-sensor provenance, windows, split disjointness, features, recognition artifacts, smoothing and gap-aware intervals, the exact response formatter, Tasks 1-4 rules, generated JSON rejection, evaluation metrics, build summaries, CLI integration, and report support. The synthetic generator remains a regression fixture only; no synthetic accuracy appears as a real result.
 
 ---PAGE---
 
-# 5. Recognition Design
+# 4. Seven-Class Recognition
 
-The recognition backbone will use engineered features with compact classical models. This choice supports fast CPU inference, direct feature provenance, and several accuracy-versus-overhead operating points without a long neural-training cycle.
+The recognizer uses compact engineered features so the report can trace an explanation back to a modality and so CPU inference remains practical. NumPy and SciPy implement statistical and spectral operations [4,5]; scikit-learn supplies the balanced classifiers and metrics [6].
 
-### 5.1 Feature groups
+### 4.1 Features
 
-- **Statistical:** mean, standard deviation, median, interquartile range, minimum, maximum, root-mean-square value, energy, skewness, and kurtosis per axis and magnitude.
-- **Temporal:** demeaned zero-crossing rate and cross-axis correlations.
-- **Spectral:** dominant non-DC frequency, spectral entropy, and power in 0.3-3 Hz, 3-8 Hz, and 8-12 Hz bands.
-- **Provenance:** every feature retains its source modality and channel group for later evidence selection.
+The 98-dimensional dual-sensor vector includes mean, standard deviation, median, interquartile range, extrema, RMS, energy, skewness, kurtosis, zero-crossing rate, cross-axis correlations, dominant non-DC frequency, spectral entropy, and band power in 0.3-3, 3-8, and 8-12 Hz. These are computed for axes and vector magnitudes. The stored schema records feature order and modality/channel provenance.
 
-### 5.2 Candidate models
+### 4.2 Validation selection
 
-| Configuration | Purpose | Status |
+All candidates use class balancing and the same capped training sample. Selection maximizes user-disjoint validation macro-F1; a candidate within one percentage point of the best is replaced by the smaller/faster alternative.
+
+| Candidate | Validation accuracy | Macro-F1 | Median ms/window | Serialized size |
+|---|---:|---:|---:|---:|
+| Balanced logistic regression | 38.93% | **35.17%** | 0.00047 | **6.7 KiB** |
+| Compact RF, 80 trees | **41.79%** | 34.95% | 0.00173 | 42.5 MiB |
+| Full RF, 300 trees | 39.40% | 33.30% | 0.00700 | 1,220.9 MiB |
+
+Logistic regression is selected because it has the highest macro-F1 and is over 6,000 times smaller than the compact forest. The committed artifact, including schema metadata, is 8,276 bytes; the 1.2 GB full forest is deliberately not committed.
+
+### 4.3 Untouched-user recognition result
+
+| Input/feature scope | Accuracy | Balanced accuracy | Macro-F1 |
+|---|---:|---:|---:|
+| Raw accelerometer + gyroscope, 98 features | **35.99%** | 37.36% | 29.78% |
+| Raw accelerometer fallback, 49 features | 34.88% | **40.99%** | 28.13% |
+| Official precomputed dual features, 52 retained | 54.77% | not comparable in saved run | **36.21%** |
+
+The official-feature baseline is a useful upper reference but is not presented as the submitted raw-window pipeline: it uses the release's precomputed example features. The raw dual model improves macro-F1 over accelerometer-only but not balanced accuracy, indicating noisy gyro alignment and user/device variance.
+
+### 4.4 Per-class result
+
+Test F1 is 50.26% for lying, 29.55% sitting, 18.49% standing in place, 14.09% standing and moving, 55.18% walking, 6.48% running, and 34.38% bicycling. Rare running has only 958 test windows and is frequently confused with walking; the two standing classes are confused with sedentary and each other. Class weights cannot fully compensate for weak session labels and participant shift.
+
+---PAGE---
+
+# 5. Timeline and Deterministic Tasks 1-3
+
+Raw probabilities are median-smoothed over neighboring windows. Predictions below 0.35 confidence are marked unknown. Consecutive windows of the same class form an `ActivityInterval` with start, end, observed duration, mean confidence, modality, supporting channels, and representative feature values. Gaps larger than the configured tolerance split intervals so missing time is not counted as observed activity.
+
+### 5.1 Query router and operations
+
+| Question type | Deterministic timeline operation | Evidence returned |
 |---|---|---|
-| Random forest, 300 trees, depth 18 | Primary accuracy-oriented operating point | PENDING REAL-DATA EXPERIMENT |
-| Random forest, 80 trees, depth 12 | Compact latency/size operating point | PENDING REAL-DATA EXPERIMENT |
-| Balanced multinomial logistic regression | Interpretable low-cost baseline | PENDING REAL-DATA EXPERIMENT |
+| Identification | Activity with greatest supported duration | All intervals for selected activity |
+| Verification | Test whether named intervals exist | Matching intervals or N/A |
+| Duration | Sum durations of matching intervals | Exactly the summed intervals |
+| Count | Count separated matching intervals | Every counted interval |
+| Onset/when | Minimum matching start time | First interval |
+| Comparison | Compare total durations for two activities | Intervals for both operands |
+| Grounding | Restate detected event with provenance | Matching interval and feature summary |
 
-All candidates use class balancing. The selected recognizer maximizes validation macro-F1; if two models differ by no more than one percentage point, the smaller and faster model is selected. The untouched test users are used once after model selection.
+### 5.2 Evidence construction
 
-### 5.3 Stored artifact
+Every arithmetic method returns both a value and the interval objects consumed. The formatter derives seconds, modality, and channels from those objects. Explanations name measured motion properties and mean confidence. An accelerometer-only build is labeled `accelerometer` and cannot claim gyro support; the dual build uses `both` and `All` only when both modalities contributed to the feature vector.
 
-The final artifact will include the fitted estimator, any required scaler, feature schema and order, seven-class order, split identifiers, preprocessing configuration hash, and training seed. The artifact must stay below GitHub's individual-file size limit so evaluation can run without retraining.
-
-### 5.4 Preliminary accuracy table
-
-| Metric | Value |
-|---|---|
-| Test accuracy | PENDING REAL-DATA EXPERIMENT |
-| Balanced accuracy | PENDING REAL-DATA EXPERIMENT |
-| Macro-F1 | PENDING REAL-DATA EXPERIMENT |
-| Per-class precision/recall/F1 | PENDING REAL-DATA EXPERIMENT |
-
-No recognition accuracy is claimed in this preliminary revision.
-
----PAGE---
-
-# 6. Timeline and Tasks 1-3
-
-Window probabilities will be smoothed with a short median/majority filter. Windows whose maximum probability is below 0.35 are marked unknown. Consecutive supported windows are aggregated into intervals containing the predicted activity, start/end time, observed duration, mean confidence, contributing windows, and representative features. Intervals are split across missing-data gaps; isolated single-window changes are absorbed only when both neighbors agree.
-
-### 6.1 Deterministic operations
-
-| Question type | Timeline operation |
-|---|---|
-| Identification | Highest-duration supported activity in the requested span |
-| Verification | Presence of a supported interval for the named activity |
-| Duration | Sum of supported interval durations |
-| Count | Number of separated intervals |
-| Onset/when | Start of the first matching interval |
-| Comparison | Compare summed durations of the two named activities |
-
-### 6.2 Evidence selection
-
-Every operation returns the intervals it consumed. Those intervals populate the timestamp field. Feature provenance selects modalities and channels: posture uses acceleration orientation and stability, walking/running combine cadence and gyroscope oscillation, and bicycling uses smooth cadence with sustained gyroscope motion. Explanations include measured values and confidence rather than stock descriptions alone.
-
-### 6.3 Illustrative output format
-
-The following block illustrates formatting only; it is not a measured prediction.
+### 5.3 Required CLI
 
 ```text
-Answer: Yes, running began at 1512 seconds
-Activity/Event: Onset of running
-Evidence:
-    Timestamp(s): 1512 to 1980 (seconds from start)
-    Sensor Modality: Both
-    Sensor Channel(s): All
-Explanation: Illustrative example: the cited interval would need to show a
-             sustained high accelerometer cadence and gyroscope energy.
+python scripts/answer_questions.py \
+  --recording recording.csv \
+  --questions questions.txt \
+  --model artifacts/raw_both_recognizer.joblib \
+  --out answers.txt --no-slm
 ```
 
-### 6.4 Interface
+The input schema is `timestamp,acc_x,acc_y,acc_z,gyro_x,gyro_y,gyro_z`. The command validates columns, normalizes time to seconds from the recording start, extracts windows and features, builds the timeline, and writes one exact-format block per question. `--no-slm` retains full Tasks 1-3 and deterministic Task 4 behavior for machines without model weights.
 
-The final command accepts a CSV with `timestamp, acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z`, a text file containing one question per line, and an output filename. It writes one schema-conforming block per question. Input validation failures return a non-zero exit; insufficient signal returns a structured `N/A` answer rather than a crash.
+### 5.4 Example from the formatter
 
----PAGE---
+```text
+Answer: 2 intervals
+Activity/Event: walking
+Evidence:
+    Timestamp(s): 4.000 to 9.120; 12.960 to 18.080
+    Sensor Modality: both
+    Sensor Channel(s): All
+Explanation: The answer counts two separated walking intervals supported by
+             the cited dual-sensor windows and their mean confidence.
+```
 
-# 7. Task 4: Grounded Open-World Reasoning
-
-The planned slow path uses Qwen2.5-1.5B-Instruct [3], selected as a compact instruction-tuned model that can fit on the available 8 GB laptop GPU. This component is not yet integrated, and no Task 4 score is claimed in this revision.
-
-### 7.1 Restricted evidence prompt
-
-The model receives the query, activity intervals, observed durations, missing-data gaps, per-interval feature summaries, and an explicit allow-list of evidence ranges. Raw signal arrays are not converted into free text. Generation is deterministic: temperature zero, greedy decoding, and a small output-token budget.
-
-### 7.2 Structured validation
-
-The model must return JSON containing answer, activity/event, timestamps, modalities, channels, and explanation. A deterministic validator rejects malformed output, timestamps outside supplied evidence, nonexistent modalities, unsupported channel names, and explanations that refer to absent features. Only validated fields are formatted for the user.
-
-### 7.3 Fallback rules
-
-- Prolonged rest requires a sufficiently long supported lying interval.
-- Wheeled or pedal-based movement requires a supported bicycling interval and compatible smooth cadence.
-- Strenuous activity requires supported high-intensity activity, normally running.
-- Possible unsteadiness requires irregular gyroscope energy outside a normal running/cycling cadence.
-
-The rule layer also serves when model weights are unavailable. A query outside both the validated model result and rule coverage returns `Inconclusive` with an explanation of the evidence limitation.
-
-### 7.4 Privacy and cost
-
-All inference is intended to remain local. The language model reads only the derived evidence summary, reducing prompt length and keeping raw health-related motion data off external services. Tasks 1-3 do not invoke the model, so their latency and memory cost remain close to that of the compact recognition pipeline.
-
-| Task 4 item | Preliminary status |
-|---|---|
-| Local model loading | PENDING IMPLEMENTATION |
-| JSON/schema validator | PENDING IMPLEMENTATION |
-| Timestamp containment tests | PENDING IMPLEMENTATION |
-| Open-world accuracy and rubric score | PENDING REAL-DATA EXPERIMENT |
+This block illustrates the actual output contract; it is not substituted for a measured accuracy result.
 
 ---PAGE---
 
-# 8. Evaluation Protocol
+# 6. Task 4: Validated Local Reasoning
 
-Evaluation is performed on users excluded from training and model selection. A balanced question set covers identification, verification, duration, count, comparison, grounding, and open-world reasoning. Template-generated questions are supplemented with paraphrases so the router is not assessed solely on wording generated by its own code.
+Task 4 uses Qwen2.5-1.5B-Instruct [3] through PyTorch and Transformers [7,8]. The 1.54-billion-parameter model is loaded locally in FP16 on the NVIDIA GPU when CUDA is available, with a CPU fallback. It receives only serialized activity intervals and feature summaries, never unrestricted raw sensor arrays.
 
-### 8.1 Metrics
+### 6.1 Prompt and decoding
 
-- **Categorical:** exact-match accuracy, macro-F1, and balanced accuracy.
-- **Binary verification:** positive-class precision, recall, and F1, plus specificity.
-- **Numeric:** mean absolute error and accuracy within declared absolute or relative tolerances.
-- **Temporal:** interval Intersection over Union, temporal precision/recall/F1, and acceptance from IoU 0.1 to 0.9.
-- **Grounding:** an answer is grounded-correct only when the answer is correct, evidence IoU is at least 0.5, and modality/channels match the reference.
-- **Open world:** categorical behavior correctness plus a fixed 1-5 faithfulness/plausibility rubric. Independent human agreement will be reported only if independent grading actually occurs.
+The prompt contains the question, a six-field JSON schema, and an `EVIDENCE` array. Generation is greedy (`do_sample=False`) and limited to 256 new tokens. The answer is extracted from one JSON object. There is no remote inference service and no raw wearable data leaves the machine.
 
-### 8.2 Headline score
+### 6.2 Validation boundary
 
-Overall QA accuracy is macro-averaged across question types, preventing abundant sedentary identification examples from dominating temporal or open-world questions.
+The deterministic validator requires answer, activity/event, timestamp pairs, modality, channels, and explanation. It checks enum membership, canonicalizes case-only enum variation, verifies every timestamp is contained in a supplied interval, checks modality compatibility, and requires claimed channels to be a subset of interval channels. Unsupported values, malformed JSON, invented time ranges, or evidence attached to `Inconclusive` raise a `GroundingError`.
 
-[PENDING_FIGURE: Figure 2 - Accuracy by question type]
+The production CLI catches a validation rejection and invokes the rule layer; the rejected text never reaches the response. Rules cover prolonged lying/rest, bicycling/wheeled movement, high-intensity running/strenuous activity, and conservative unsteadiness cues. Other unsupported questions return `Inconclusive`.
 
-[PENDING_FIGURE: Figure 3 - Seven-class activity confusion matrix]
+### 6.3 Runtime validation result
 
-Both panels above are reserved in this preliminary report so the final figure numbering and discussion remain stable.
+The model loaded and generated successfully on the RTX 5050, but all 36 calls in the benchmark returned `Inconclusive` while also citing evidence. This violates the contract for unsupported answers, so all 36 generations were rejected. The deterministic strenuous-activity rule then returned `Yes`, citing the supplied 16.0-24.0 s running interval, modality `both`, channels `All`, confidence 0.880, acceleration RMS 1.820 g, and gyro RMS 0.710 rad/s. No generated claim bypassed validation.
 
----PAGE---
+This outcome is intentional evidence that the model cannot bypass the deterministic contract. It is distinct from the QA figure on page 8: that balanced evaluation uses deterministic Task 4 references over real recognized timelines, while the runtime benchmark isolates the optional local Qwen path.
 
-# 9. Required Figures and Efficiency Plan
+### 6.4 Limitations of open-world evaluation
 
-[PENDING_FIGURE: Figure 4 - Accuracy versus strictness]
-
-[PENDING_FIGURE: Figure 5 - Accuracy versus overhead and Pareto frontier]
-
-[PENDING_FIGURE: Figure 6 - Robustness versus dropped input samples]
-
-Each placeholder states the absence of results rather than displaying invented axes or values. The final robustness experiment will randomly drop 0, 5, 10, 20, and 30 percent of input samples using fixed seeds, then run the unchanged preprocessing and QA stack.
-
-### 9.1 Efficiency target
-
-Measurements will be performed on an AMD Ryzen 9 8940HX laptop with an NVIDIA GeForce RTX 5050 Laptop GPU (8 GB VRAM). The report will identify the operating system, Python environment, model configuration, and run count.
-
-### 9.2 Measurements
-
-- Recognizer and language-model parameter counts and on-disk sizes.
-- Peak inference memory for deterministic and SLM paths.
-- Median and 95th-percentile latency over at least 30 warmed-up single-query runs.
-- CPU/GPU utilization where measurement is reliable.
-- Separate Tasks 1-3 and Task 4 results, because only the latter invokes Qwen.
-
-### 9.3 Accuracy-overhead operating points
-
-The logistic regression, compact random forest, and full random forest form three genuine recognition operating points. Each is evaluated with the same timeline, questions, and scoring code. Non-dominated points are joined to form the required Pareto frontier. Quantization or pruning is attempted only after the core evaluation is stable.
-
-### 9.4 Current limitations
-
-This preliminary revision has no raw ExtraSensory build, trained recognizer, QA output, SLM execution, real accuracy, robustness curve, or measured latency. Its evidence is limited to source inspection and 20 passing preprocessing tests. These limitations will be replaced by measured results, not silently removed, in the final revision.
+The current open-world set covers only the disclosed rule vocabulary and paraphrases; it is not a general natural-language or clinical benchmark. No independent human plausibility panel was available, so no inter-rater agreement is claimed. Broader behavior labels require a preregistered rubric and independent annotation before accuracy can be meaningfully reported.
 
 ---PAGE---
 
-# 10. Reproducibility, Integrity, and References
+# 7. End-to-End Evaluation
 
-### 10.1 Current setup and verification
+Recognition metrics use the 12 untouched fold-0 users. End-to-end QA uses 25 short recordings from five additional users, with 75 questions per type and three phrasings per reference question: 600 questions total. Reference answers are computed from held-out labels using the same time support but never fed to the recognizer. Saved JSON records split/configuration hashes and all counts.
+
+### 7.1 Metrics
+
+Categorical questions use exact match. Numeric duration and onset use mean absolute error (MAE) over answered questions plus answer coverage. Temporal strictness varies the required interval IoU from 0.1 to 0.9. A grounding item is correct only if the answer matches, temporal IoU is at least 0.5, and modality/channels match. Robustness repeats evaluation at fixed random input-drop levels. These definitions penalize a correct label paired with unsupported evidence.
+
+### 7.2 Results by question type
+
+[FIGURE: figures/real_raw_both/figure_accuracy_by_question_type.png | 430 | **Figure 2.** Exact-match accuracy on 75 held-out real-data questions per type.]
+
+Macro-averaging the eight type accuracies gives **13.5%**. Identification is 8%, verification 40%, count 8%, and open-world 52%; duration, onset, comparison, and strict grounding are 0%. For answered numeric queries, duration MAE is 108.60 s with 100% coverage, while onset MAE is 314.27 s with 26.67% coverage. The poor temporal scores follow directly from fragmented and misclassified intervals. Verification and rule-based open-world questions tolerate some boundary error, while exact durations and comparisons do not.
+
+### 7.3 Interpretation
+
+The result separates software completeness from model quality: every task produces validated output, but real-data temporal reasoning is only as good as the timeline. Future work should improve calibration, transition handling, and sequence modeling rather than adding more answer templates. Reporting zeroes is important because a label-only metric would conceal this failure mode.
+
+---PAGE---
+
+# 8. Recognition Confusion and Error Analysis
+
+[FIGURE: figures/real_raw_both/figure_confusion_matrix.png | 365 | **Figure 3.** Row-normalized confusion matrix for 144,056 untouched-user raw dual-sensor windows. Percentages are fractions of each true class; exact counts are saved in the evaluation JSON.]
+
+Lying down is the strongest sedentary class at about 70% recall. Sitting is predicted as lying in 41% of its windows. Standing in place and standing/moving have only about 18% and 10% recall, respectively, with a large bias toward lying. Walking reaches 46% recall, running 43%, and bicycling 50%, but running has little support and a low F1 because many other moving windows are also predicted as running.
+
+The errors have three plausible, non-exclusive sources. First, self-reported labels apply to approximately 20-second sessions and need not align with every 2.56-second window. Second, the phone coordinate frame varies across users and placements; per-axis features are therefore only partly invariant. Third, the selected linear model trades nonlinear capacity for an 8 KiB artifact and low latency. The forests increase validation accuracy but do not improve macro-F1 enough to justify their size under the selection rule.
+
+The confusion also explains the QA pattern. A false sedentary interval may dominate identification, extra short intervals change counts, and a single boundary shift invalidates strict grounding or onset even if the broad activity is reasonable. A stronger sequence model or orientation-normalized representation is a higher-value improvement than relaxing the scoring threshold.
+
+---PAGE---
+
+# 9. Strictness and Accuracy-Overhead Trade-off
+
+[FIGURE: figures/real_raw_both/figure_accuracy_vs_strictness.png | 355 | **Figure 4.** Grounded temporal accuracy as the required interval IoU increases from 0.1 to 0.9.]
+
+Accuracy falls from 18.0% at IoU 0.1 to 7.3% at IoU 0.9. The monotonic decline confirms that some answers identify approximately correct activity regions but do not recover reliable boundaries. The 0.5 operating point is 10.0% before the additional modality/channel requirements used by the strict grounding category.
+
+[FIGURE: figures/real_raw_both/figure_accuracy_vs_overhead.png | 355 | **Figure 5.** User-disjoint validation accuracy versus per-window prediction latency. Labels report serialized estimator size; latency excludes feature extraction.]
+
+The compact forest provides the best validation accuracy (41.79%) but costs 42.5 MiB, compared with 38.93% for the 6.7 KiB logistic estimator. The full forest is dominated: it is slower, much larger, and less accurate than the compact forest. Since logistic regression also has the best validation macro-F1, it is the selected submission point. Figure 5 uses a logarithmic latency axis because all prediction-only values are below 0.01 ms/window on a vectorized 256-window batch.
+
+---PAGE---
+
+# 10. Robustness and Efficiency
+
+[FIGURE: figures/real_raw_both/figure_robustness.png | 385 | **Figure 6.** Recognition accuracy under deterministic random removal of input samples, averaged over three repeats at each level.]
+
+Accuracy changes from 35.99% with no additional drops to 35.80%, 35.59%, 35.20%, and 35.03% at 5%, 10%, 20%, and 30% removal. The gradual 0.96-point loss at 30% reflects validity-aware interpolation and aggregate features. It does not imply immunity to long contiguous gaps; windows below the coverage threshold are excluded instead of guessed.
+
+### 10.1 Measured deterministic path
+
+Measurements used Python 3.14.4 under WSL2 on an AMD Ryzen 9 8940HX-class machine with 32 logical processors. Each timing has five warm-ups and 30 measured runs.
+
+| Operation | Batch | Median | p95 | Peak traced memory |
+|---|---:|---:|---:|---:|
+| Model probability prediction | 256 windows | 0.567 ms | 0.658 ms | 0.227 MiB |
+| Raw window to features and probabilities | 256 windows | 9.288 ms | 9.572 ms | 2.091 MiB |
+| Deterministic Tasks 1-3 | 4 questions | 0.049 ms | 0.086 ms | 0.004 MiB |
+
+The selected committed model is 8,276 bytes and represents 693 learned coefficients/intercepts. The raw-to-probability measurement is the realistic recognition cost because it includes 98-feature extraction; the smaller model-only number demonstrates that feature computation dominates. Process CPU utilization during these short serial batches was approximately 3.1% of total machine capacity, about one fully occupied logical processor.
+
+### 10.2 Task 4 cost
+
+The optional Qwen path is deliberately benchmarked separately because it loads a multi-billion-byte model and performs autoregressive decoding, whereas Tasks 1-3 are sub-millisecond deterministic operations. Qwen has 1,543,714,304 parameters and occupies 3,098,955,668 cache bytes (2.89 GiB). FP16 loading took 110.16 s. Across five warm-ups and 30 measured validated-pipeline runs, median latency was 3,314.03 ms and p95 was 3,548.79 ms; peak allocated GPU memory was 3,002.43 MiB and final process RSS was 2,034.05 MiB. All generations were rejected and safely routed to the deterministic fallback, so these timings measure the conservative SLM-plus-validation path, not successful generative answer quality.
+
+---PAGE---
+
+# 11. Reproducibility, Limitations, and References
+
+### 11.1 Reproduction commands
 
 ```text
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.lock
 pip install -e .
 pytest -q
+
+python scripts/build_dataset.py --raw-root /path/to/extrasensory \
+  --out /path/to/processed_both --modalities both
+python scripts/train_recognizer.py --processed /path/to/processed_both \
+  --splits artifacts/raw_both_split_manifest.json \
+  --model artifacts/raw_both_recognizer.joblib \
+  --results artifacts/raw_both_recognition_results.json
+python scripts/evaluate_system.py --processed /path/to/processed_both \
+  --splits artifacts/raw_both_split_manifest.json \
+  --model artifacts/raw_both_recognizer.joblib \
+  --recognition-results artifacts/raw_both_recognition_results.json \
+  --out artifacts/raw_both_evaluation_results.json
+python scripts/generate_figures.py \
+  --results artifacts/raw_both_evaluation_results.json \
+  --out report/figures/real_raw_both
+python report/build_report.py
+python report/check_report.py
 ```
 
-Synthetic preprocessing smoke test:
+Task 4 was tested with PyTorch 2.14.0+cu130, Transformers 5.17.0, Accelerate 1.15.0, and psutil 7.2.2. The core pipeline remains usable without these optional packages through `--no-slm`. Result JSON files store configuration and split hashes; model metadata stores feature and class order. Raw archives, expanded data, the 1.2 GB experimental forest, virtual environments, and Qwen weights are excluded from Git.
 
-```text
-python scripts/make_synthetic_data.py --users 3
-python scripts/build_dataset.py --raw-root data/raw/synthetic --synthetic
-pytest -q
-```
+### 11.2 Limitations and next work
 
-The final README will add commands for data download, training, evaluation, model retrieval, question answering, benchmarking, and report regeneration. Raw data and large language-model weights remain excluded from Git.
+Recognition and temporal QA are not yet competitive: participant shift, orientation variance, coarse labels, severe imbalance, and linear decision boundaries remain. QA references are generated from labels rather than independently annotated question/answer pairs. Robustness uses random sample removal, not burst loss. The open-world test vocabulary is narrow and has no human rubric panel. The next technical priorities are orientation-invariant features, probability calibration, sequence-aware recognition, transition-level annotations, class-aware thresholding, and an external paraphrase/grounding set.
 
-### 10.2 Academic integrity and AI-use disclosure
+### 11.3 Academic integrity and AI-use disclosure
 
-Claude (Anthropic) was used as a pair-programming and design assistant for the repository scaffold, configuration, preprocessing modules, synthetic generator, and the initial unit-test suite. The team is responsible for reviewing and validating that work against real data.
+Claude (Anthropic) assisted with the initial repository scaffold, configuration, preprocessing modules, synthetic generator, and early tests. OpenAI Codex assisted with assignment audit, planning, implementation, data-pipeline repairs, testing, experiment orchestration, result verification, and report generation. Pritam Mondal reviewed the work and is responsible for the submitted artifact. AI-generated text or code was never treated as experimental evidence; reported measurements come from committed scripts and saved outputs. A chronological disclosure is retained in `docs/AI_USE_LOG.md`.
 
-OpenAI Codex was used to audit the assignment against the repository, identify missing deliverables and preprocessing defects, plan the staged implementation, verify the existing test suite, initialize repository history, and draft/build this preliminary report. Future Codex-assisted implementation and testing will be recorded in `docs/AI_USE_LOG.md`. AI-generated text and code are not treated as evidence of correctness; reported results must come from reproducible commands and saved outputs.
-
-### 10.3 References
+### 11.4 References
 
 [1] ExtraSensory Dataset, UC San Diego. http://extrasensory.ucsd.edu/
 
@@ -347,14 +349,8 @@ OpenAI Codex was used to audit the assignment against the repository, identify m
 
 [4] C. R. Harris et al. Array programming with NumPy. Nature, 585, 2020. https://doi.org/10.1038/s41586-020-2649-2
 
-[5] P. Virtanen et al. SciPy 1.0: Fundamental algorithms for scientific computing in Python. Nature Methods, 17, 2020. https://doi.org/10.1038/s41592-019-0686-2
+[5] P. Virtanen et al. SciPy 1.0. Nature Methods, 17, 2020. https://doi.org/10.1038/s41592-019-0686-2
 
-[6] F. Pedregosa et al. Scikit-learn: Machine learning in Python. Journal of Machine Learning Research, 12, 2011.
+[6] F. Pedregosa et al. Scikit-learn: Machine learning in Python. JMLR, 12, 2011.
 
-[7] A. Paszke et al. PyTorch: An imperative style, high-performance deep learning library. NeurIPS, 2019.
-
-[8] T. Wolf et al. Transformers: State-of-the-art natural language processing. EMNLP System Demonstrations, 2020.
-
-### 10.4 Revision policy
-
-This PDF is intentionally versioned as a preliminary submission. Later revisions will preserve the methodology and replace pending panels with traceable metrics and figures. The Git commit history records when each result became available.
+[7] A. Paszke et al. PyTorch. NeurIPS, 2019.  [8] T. Wolf et al. Transformers. EMNLP System Demonstrations, 2020.

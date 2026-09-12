@@ -1,0 +1,187 @@
+{
+  "dataset_kind": "real",
+  "scope": "engineered_windows",
+  "available_modalities": [
+    "accelerometer",
+    "gyroscope"
+  ],
+  "accuracy_by_question_type": {
+    "identification": 0.08,
+    "verification": 0.4,
+    "duration": 0.0,
+    "count": 0.08,
+    "onset": 0.0,
+    "comparison": 0.0,
+    "grounding": 0.0,
+    "open_world": 0.52
+  },
+  "question_count_by_type": {
+    "identification": 75,
+    "verification": 75,
+    "duration": 75,
+    "count": 75,
+    "onset": 75,
+    "comparison": 75,
+    "grounding": 75,
+    "open_world": 75
+  },
+  "numeric_mae_seconds_answered": {
+    "duration": 108.59519999999999,
+    "onset": 314.26800000000003
+  },
+  "numeric_answer_coverage": {
+    "duration": 1.0,
+    "onset": 0.26666666666666666
+  },
+  "confusion_matrix": {
+    "classes": [
+      "lying_down",
+      "sitting",
+      "standing_in_place",
+      "standing_and_moving",
+      "walking",
+      "running",
+      "bicycling"
+    ],
+    "matrix": [
+      [
+        22031,
+        5033,
+        1154,
+        712,
+        155,
+        2160,
+        183
+      ],
+      [
+        14699,
+        8618,
+        3421,
+        2318,
+        1028,
+        3455,
+        2461
+      ],
+      [
+        5372,
+        2537,
+        2878,
+        2317,
+        1129,
+        873,
+        498
+      ],
+      [
+        11726,
+        3915,
+        4165,
+        2690,
+        2359,
+        1705,
+        1008
+      ],
+      [
+        2025,
+        2096,
+        3686,
+        2313,
+        12934,
+        2727,
+        2177
+      ],
+      [
+        10,
+        4,
+        27,
+        14,
+        327,
+        408,
+        168
+      ],
+      [
+        385,
+        136,
+        198,
+        239,
+        990,
+        301,
+        2291
+      ]
+    ]
+  },
+  "strictness": {
+    "threshold": [
+      0.1,
+      0.2,
+      0.3,
+      0.4,
+      0.5,
+      0.6,
+      0.7,
+      0.8,
+      0.9
+    ],
+    "accuracy": [
+      0.18,
+      0.14666666666666667,
+      0.12333333333333334,
+      0.11666666666666667,
+      0.1,
+      0.09333333333333334,
+      0.07666666666666666,
+      0.07333333333333333,
+      0.07333333333333333
+    ]
+  },
+  "overhead": [
+    {
+      "model": "logistic",
+      "latency_ms": 0.00046696269832644226,
+      "accuracy": 0.38934996885420103,
+      "serialized_bytes": 6894
+    },
+    {
+      "model": "compact_rf",
+      "latency_ms": 0.0017264057427341338,
+      "accuracy": 0.4178941775676963,
+      "serialized_bytes": 44531420
+    },
+    {
+      "model": "full_rf",
+      "latency_ms": 0.0070012235031690455,
+      "accuracy": 0.39403099923051554,
+      "serialized_bytes": 1280162941
+    }
+  ],
+  "robustness": {
+    "dropped_percent": [
+      0,
+      5,
+      10,
+      20,
+      30
+    ],
+    "accuracy": [
+      0.35992947187204977,
+      0.3580366894355899,
+      0.3559287129079432,
+      0.35203670794690956,
+      0.3502850743229485
+    ]
+  },
+  "provenance": {
+    "model_config_sha256": "fef29979588a829e9821e348c6d1516164109d67df344e983bf1303afebefc62",
+    "split_manifest_sha256": "818cac719825d995af3d4b893b01c4e988c4697d25c0a8f694ebf05f20e5e0a7",
+    "qa_users": [
+      "2C32C23E-E30C-498A-8DD2-0EFB9150A02E",
+      "A5CDF89D-02A2-4EC1-89F8-F534FDABDD96",
+      "B7F9D634-263E-4A97-87F9-6FFB4DDCB36C",
+      "BE3CA5A6-A561-4BBD-B7C9-5DF6805400FC",
+      "CDA3BBF7-6631-45E8-85BA-EEB416B32A3C"
+    ],
+    "qa_recordings": 25,
+    "qa_recordings_per_user_target": 5,
+    "qa_examples_per_recording_target": 12,
+    "robustness_repeats": 3
+  }
+}

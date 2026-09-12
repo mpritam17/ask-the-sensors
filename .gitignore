@@ -10,6 +10,8 @@ data/processed/
 artifacts/**/*.pt
 artifacts/**/*.joblib
 !artifacts/precomputed_real_both_recognizer.joblib
+!artifacts/raw_acc_recognizer.joblib
+!artifacts/raw_both_recognizer.joblib
 artifacts/**/*.onnx
 artifacts/**/*.gguf
 models_cache/
@@ -26,4 +28,5 @@ venv/
 
 # --- keep these ---
 !report/figures/*.png
+report/rendered_*/
 !artifacts/.gitkeep

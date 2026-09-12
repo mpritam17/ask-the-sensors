@@ -92,21 +92,20 @@ def build_timeline(
 
     intervals: List[ActivityInterval] = []
     contributors: List[List[Dict[str, float]]] = []
+    confidence_contributors: List[List[float]] = []
     for index in np.flatnonzero(supported):
         activity = str(classes[int(labels[index])])
         start, end, conf = float(starts[index]), float(ends[index]), float(confidence[index])
         modality, channels = evidence_source(activity, available_modalities)
         if intervals and intervals[-1].activity == activity and start <= intervals[-1].end + max_gap_seconds:
-            old_duration = intervals[-1].duration
-            new_duration = max(end, intervals[-1].end) - intervals[-1].start
             intervals[-1].end = max(intervals[-1].end, end)
-            intervals[-1].confidence = (
-                intervals[-1].confidence * old_duration + conf * max(end - start, 1e-9)
-            ) / max(new_duration, 1e-9)
             contributors[-1].append(dict(summaries[index]))
+            confidence_contributors[-1].append(conf)
+            intervals[-1].confidence = float(np.mean(confidence_contributors[-1]))
         else:
             intervals.append(ActivityInterval(activity, start, end, conf, modality, channels))
             contributors.append([dict(summaries[index])])
+            confidence_contributors.append([conf])
 
     kept: List[ActivityInterval] = []
     for interval, blocks in zip(intervals, contributors):

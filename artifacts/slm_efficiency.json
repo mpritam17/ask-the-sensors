@@ -1,0 +1,44 @@
+{
+  "dataset_kind": "real_model_runtime",
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "load_seconds": 110.16352020000002,
+  "parameter_count": 1543714304,
+  "cache_bytes": 3098955668,
+  "device": "cuda:0",
+  "dtype": "torch.float16",
+  "gpu_name": "NVIDIA GeForce RTX 5050 Laptop GPU",
+  "cuda_version": "13.0",
+  "peak_gpu_memory_mb": 3002.43212890625,
+  "process_rss_mb_after_benchmark": 2034.05078125,
+  "validated_answer": {
+    "answer": "Yes",
+    "activity_event": "Running",
+    "timestamps": [
+      [
+        16.0,
+        24.0
+      ]
+    ],
+    "modality": "both",
+    "channels": [
+      "All"
+    ],
+    "explanation": "Strenuous activity is supported only when a high-intensity running interval is present. Mean interval confidence=0.880. Mean measured features: acc_rms_g=1.820; gyro_rms_rad_s=0.710."
+  },
+  "validation": {
+    "model_calls": 36,
+    "rejected_generations": 36,
+    "fallback_used": true,
+    "last_rejection": "an inconclusive answer must not cite evidence as support"
+  },
+  "inference": {
+    "runs": 30,
+    "warmup_runs": 5,
+    "median_latency_ms": 3314.032437499975,
+    "p95_latency_ms": 3548.789531849979,
+    "peak_python_memory_mb": 0.07092761993408203,
+    "process_cpu_seconds": 99.12914493800001,
+    "logical_processors": 32,
+    "cpu_utilization_percent_of_machine": 3.119033698429323
+  }
+}

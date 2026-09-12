@@ -49,6 +49,71 @@ def load_users(processed: Path, users, cap_per_class=None, seed=0):
             }
 
 
+def load_qa_recordings(processed: Path, users, *, recordings_per_user=5, examples_per_recording=12):
+    """Yield short, transition-containing recordings from held-out QA users.
+
+    ExtraSensory users span days of sparse 20-second sessions. Treating an
+    entire user as one input recording would make duration/onset errors depend
+    on multi-day wall-clock gaps. We instead form deterministic snippets around
+    label transitions and rebase each snippet to its own second zero.
+    """
+    for uuid in users:
+        with np.load(processed / f"{uuid}.npz", allow_pickle=True) as data:
+            valid = np.asarray(data["valid"], bool)
+            timestamps = np.asarray(data["example_ts"], int)[valid]
+            labels = np.asarray(data["y"], int)[valid]
+            windows = np.asarray(data["windows"])[valid]
+            starts = np.asarray(data["t_start"], float)[valid]
+            ends = np.asarray(data["t_end"], float)[valid]
+            modalities = (
+                [str(item) for item in data["modalities"]]
+                if "modalities" in data.files
+                else ["accelerometer", "gyroscope"]
+            )
+        unique_timestamps, first_indices = np.unique(timestamps, return_index=True)
+        if len(unique_timestamps) == 0:
+            continue
+        session_labels = labels[first_indices]
+        transitions = (np.flatnonzero(np.diff(session_labels) != 0) + 1).tolist()
+        if len(transitions) > recordings_per_user:
+            transition_positions = np.linspace(
+                0, len(transitions) - 1, num=recordings_per_user, dtype=int
+            )
+            transitions = [transitions[index] for index in transition_positions]
+        evenly_spaced = np.linspace(
+            0, max(len(unique_timestamps) - examples_per_recording, 0),
+            num=recordings_per_user,
+            dtype=int,
+        ).tolist()
+        half = examples_per_recording // 2
+        candidate_starts = [
+            min(max(index - half, 0), max(len(unique_timestamps) - examples_per_recording, 0))
+            for index in transitions
+        ] + evenly_spaced
+        selected_starts = []
+        for candidate in candidate_starts:
+            if candidate in selected_starts:
+                continue
+            selected_starts.append(candidate)
+            if len(selected_starts) == recordings_per_user:
+                break
+        for recording_index, first in enumerate(selected_starts):
+            selected_timestamps = unique_timestamps[first:first + examples_per_recording]
+            selected = np.flatnonzero(np.isin(timestamps, selected_timestamps))
+            if len(selected) == 0:
+                continue
+            origin = float(starts[selected[0]])
+            yield {
+                "uuid": uuid,
+                "recording_index": recording_index,
+                "windows": windows[selected],
+                "y": labels[selected],
+                "t_start": starts[selected] - origin,
+                "t_end": ends[selected] - origin,
+                "available_modalities": modalities,
+            }
+
+
 def timeline_from_labels(block, classes):
     probabilities = np.eye(len(classes), dtype=float)[block["y"]]
     return build_timeline(
@@ -176,13 +241,24 @@ def main() -> int:
     qa_scores = {name: [] for name in (
         "identification", "verification", "duration", "count", "onset", "comparison", "grounding", "open_world"
     )}
+    numeric_errors = {"duration": [], "onset": []}
+    numeric_attempts = {"duration": 0, "onset": 0}
     ious = []
-    for block in load_users(processed, splits["qa"]):
+    qa_blocks = list(load_qa_recordings(processed, splits["qa"]))
+    for block in qa_blocks:
         true_timeline = timeline_from_labels(block, classes)
         predicted_timeline = timeline_from_model(block, bundle, model_cfg)
         for question_type, question in qa_queries(true_timeline):
             expected = answer_question(question, true_timeline)
             predicted = answer_question(question, predicted_timeline)
+            if question_type in numeric_errors:
+                numeric_attempts[question_type] += 1
+                try:
+                    numeric_errors[question_type].append(
+                        abs(float(expected.answer.split()[0]) - float(predicted.answer.split()[0]))
+                    )
+                except (ValueError, IndexError):
+                    pass
             correct = _score_answer(question_type, expected, predicted)
             if question_type == "grounding":
                 correct = bool(
@@ -232,6 +308,14 @@ def main() -> int:
         ),
         "accuracy_by_question_type": {key: float(np.mean(values)) for key, values in qa_scores.items()},
         "question_count_by_type": {key: len(values) for key, values in qa_scores.items()},
+        "numeric_mae_seconds_answered": {
+            key: (float(np.mean(values)) if values else None)
+            for key, values in numeric_errors.items()
+        },
+        "numeric_answer_coverage": {
+            key: len(numeric_errors[key]) / max(numeric_attempts[key], 1)
+            for key in numeric_errors
+        },
         "confusion_matrix": {"classes": classes, "matrix": matrix.tolist()},
         "strictness": {"threshold": thresholds, "accuracy": [float(np.mean(np.asarray(ious) >= value)) for value in thresholds]},
         "overhead": overhead,
@@ -240,6 +324,9 @@ def main() -> int:
             "model_config_sha256": bundle["config_sha256"],
             "split_manifest_sha256": split_payload["sha256"],
             "qa_users": list(splits["qa"]),
+            "qa_recordings": len(qa_blocks),
+            "qa_recordings_per_user_target": 5,
+            "qa_examples_per_recording_target": 12,
             "robustness_repeats": 3,
         },
     }

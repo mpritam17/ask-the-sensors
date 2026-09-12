@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from ats.timeline import build_timeline
 
@@ -42,3 +43,16 @@ def test_accelerometer_only_timeline_never_claims_gyroscope_evidence():
     assert len(timeline) == 1
     assert timeline[0].modality == "accelerometer"
     assert timeline[0].channels == ["Acc X", "Acc Y", "Acc Z"]
+
+
+def test_overlapping_windows_keep_confidence_in_probability_range():
+    timeline = build_timeline(
+        np.array([[0.8, 0.2], [0.9, 0.1], [0.7, 0.3]]),
+        [0.0, 1.28, 2.56],
+        [2.56, 3.84, 5.12],
+        ["walking", "sitting"],
+        smoothing_windows=1,
+    )
+    assert len(timeline) == 1
+    assert timeline[0].confidence == pytest.approx(0.8)
+    assert 0.0 <= timeline[0].confidence <= 1.0

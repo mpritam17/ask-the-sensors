@@ -21,6 +21,8 @@ def test_build_manifest_summary_is_aggregated_and_hashed(tmp_path):
     ]), encoding="utf-8")
     payload = summarize(path)
     assert payload["users"] == 2
+    assert payload["users_with_usable_windows"] == 2
+    assert payload["users_without_usable_windows"] == 0
     assert payload["modalities"] == ["acc"]
     assert payload["users_with_accelerometer_unit_rescaling"] == 1
     assert payload["n_examples_used"] == 5

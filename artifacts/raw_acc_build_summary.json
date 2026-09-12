@@ -3,6 +3,8 @@
   "source": "official ExtraSensory raw-measurement build manifest",
   "source_manifest_sha256": "afc4ecb100f4373a6b90495eb7ee3ab6e9cbbebf90cca89376ba5a87bb5f32a9",
   "users": 60,
+  "users_with_usable_windows": 60,
+  "users_without_usable_windows": 0,
   "modalities": [
     "acc"
   ],

@@ -1,0 +1,271 @@
+{
+  "dataset_kind": "real",
+  "selected_model": "logistic",
+  "config_sha256": "fef29979588a829e9821e348c6d1516164109d67df344e983bf1303afebefc62",
+  "candidate_validation": {
+    "logistic": {
+      "accuracy": 0.38934996885420103,
+      "balanced_accuracy": 0.4043761027012879,
+      "macro_f1": 0.3517043647603991,
+      "per_class": {
+        "lying_down": {
+          "precision": 0.46109735085074305,
+          "recall": 0.713625,
+          "f1-score": 0.5602185005887741,
+          "support": 24000.0
+        },
+        "sitting": {
+          "precision": 0.4281095644364616,
+          "recall": 0.198625,
+          "f1-score": 0.2713533513590437,
+          "support": 24000.0
+        },
+        "standing_in_place": {
+          "precision": 0.1908942121708079,
+          "recall": 0.22502850127159518,
+          "f1-score": 0.20656067619239282,
+          "support": 11403.0
+        },
+        "standing_and_moving": {
+          "precision": 0.20004057618178128,
+          "recall": 0.11022301715946566,
+          "f1-score": 0.14213124797289992,
+          "support": 17891.0
+        },
+        "walking": {
+          "precision": 0.5854631664160981,
+          "recall": 0.4809062410943289,
+          "f1-score": 0.5280588296651716,
+          "support": 21054.0
+        },
+        "running": {
+          "precision": 0.23031476011001326,
+          "recall": 0.5566223535204333,
+          "f1-score": 0.32581598097845665,
+          "support": 4062.0
+        },
+        "bicycling": {
+          "precision": 0.35182356310865,
+          "recall": 0.5456026058631922,
+          "f1-score": 0.4277919665660553,
+          "support": 6754.0
+        },
+        "accuracy": 0.38934996885420103,
+        "macro avg": {
+          "precision": 0.34967759903922213,
+          "recall": 0.4043761027012879,
+          "f1-score": 0.3517043647603991,
+          "support": 109164.0
+        },
+        "weighted avg": {
+          "precision": 0.39147296749177485,
+          "recall": 0.38934996885420103,
+          "f1-score": 0.3681298601328716,
+          "support": 109164.0
+        }
+      },
+      "serialized_bytes": 6894,
+      "median_latency_ms_per_window": 0.00046696269832644226,
+      "p95_latency_ms_per_window": 0.000536718316933299
+    },
+    "compact_rf": {
+      "accuracy": 0.4178941775676963,
+      "balanced_accuracy": 0.35610434637673716,
+      "macro_f1": 0.3495041100706491,
+      "per_class": {
+        "lying_down": {
+          "precision": 0.4781871746236733,
+          "recall": 0.49370833333333336,
+          "f1-score": 0.4858238176264376,
+          "support": 24000.0
+        },
+        "sitting": {
+          "precision": 0.360181956853345,
+          "recall": 0.5509583333333333,
+          "f1-score": 0.43559757543813415,
+          "support": 24000.0
+        },
+        "standing_in_place": {
+          "precision": 0.21690987753904817,
+          "recall": 0.2594054196264141,
+          "f1-score": 0.23626198083067093,
+          "support": 11403.0
+        },
+        "standing_and_moving": {
+          "precision": 0.20516366989396034,
+          "recall": 0.09949136437314851,
+          "f1-score": 0.13400082809500508,
+          "support": 17891.0
+        },
+        "walking": {
+          "precision": 0.6469181997713336,
+          "recall": 0.5912415692979957,
+          "f1-score": 0.6178280722652373,
+          "support": 21054.0
+        },
+        "running": {
+          "precision": 0.008982035928143712,
+          "recall": 0.0007385524372230429,
+          "f1-score": 0.001364877161055505,
+          "support": 4062.0
+        },
+        "bicycling": {
+          "precision": 0.580567081604426,
+          "recall": 0.4971868522357122,
+          "f1-score": 0.5356516190780028,
+          "support": 6754.0
+        },
+        "accuracy": 0.4178941775676963,
+        "macro avg": {
+          "precision": 0.35670142803056143,
+          "recall": 0.35610434637673716,
+          "f1-score": 0.3495041100706491,
+          "support": 109164.0
+        },
+        "weighted avg": {
+          "precision": 0.4016224816256378,
+          "recall": 0.4178941775676963,
+          "f1-score": 0.4015674124817975,
+          "support": 109164.0
+        }
+      },
+      "serialized_bytes": 44531420,
+      "median_latency_ms_per_window": 0.0017264057427341338,
+      "p95_latency_ms_per_window": 0.0019290470356510695
+    },
+    "full_rf": {
+      "accuracy": 0.39403099923051554,
+      "balanced_accuracy": 0.33139067304490677,
+      "macro_f1": 0.33296102218213786,
+      "per_class": {
+        "lying_down": {
+          "precision": 0.5182972367438387,
+          "recall": 0.26025,
+          "f1-score": 0.3465091120912041,
+          "support": 24000.0
+        },
+        "sitting": {
+          "precision": 0.3150326797385621,
+          "recall": 0.6727916666666667,
+          "f1-score": 0.4291276327154342,
+          "support": 24000.0
+        },
+        "standing_in_place": {
+          "precision": 0.24522168768690678,
+          "recall": 0.16539507147241955,
+          "f1-score": 0.19754896826228135,
+          "support": 11403.0
+        },
+        "standing_and_moving": {
+          "precision": 0.20718964441671867,
+          "recall": 0.1485104242356492,
+          "f1-score": 0.17300993000162787,
+          "support": 17891.0
+        },
+        "walking": {
+          "precision": 0.6156322492070255,
+          "recall": 0.6176498527595706,
+          "f1-score": 0.6166394006211916,
+          "support": 21054.0
+        },
+        "running": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 4062.0
+        },
+        "bicycling": {
+          "precision": 0.7549115913555993,
+          "recall": 0.45513769618004146,
+          "f1-score": 0.5678921115832256,
+          "support": 6754.0
+        },
+        "accuracy": 0.39403099923051554,
+        "macro avg": {
+          "precision": 0.37946929844980726,
+          "recall": 0.33139067304490677,
+          "f1-score": 0.33296102218213786,
+          "support": 109164.0
+        },
+        "weighted avg": {
+          "precision": 0.40822253757054855,
+          "recall": 0.39403099923051554,
+          "f1-score": 0.37358032575230765,
+          "support": 109164.0
+        }
+      },
+      "serialized_bytes": 1280162941,
+      "median_latency_ms_per_window": 0.0070012235031690455,
+      "p95_latency_ms_per_window": 0.008093300977886957
+    }
+  },
+  "recognition_test": {
+    "accuracy": 0.35992947187204977,
+    "balanced_accuracy": 0.37364858670133555,
+    "macro_f1": 0.29775558015217923,
+    "per_class": {
+      "lying_down": {
+        "precision": 0.3916761484852795,
+        "recall": 0.7009991090747104,
+        "f1-score": 0.5025548610794288,
+        "support": 31428.0
+      },
+      "sitting": {
+        "precision": 0.3857827118492323,
+        "recall": 0.2393888888888889,
+        "f1-score": 0.2954455852860008,
+        "support": 36000.0
+      },
+      "standing_in_place": {
+        "precision": 0.1853306716465967,
+        "recall": 0.1844398872084081,
+        "f1-score": 0.18488420646902,
+        "support": 15604.0
+      },
+      "standing_and_moving": {
+        "precision": 0.25370178251438275,
+        "recall": 0.09757690075449797,
+        "f1-score": 0.14094469623536193,
+        "support": 27568.0
+      },
+      "walking": {
+        "precision": 0.6835429658598456,
+        "recall": 0.46262250518635095,
+        "f1-score": 0.5517918088737201,
+        "support": 27958.0
+      },
+      "running": {
+        "precision": 0.035084702038008425,
+        "recall": 0.42588726513569936,
+        "f1-score": 0.06482879161039168,
+        "support": 958.0
+      },
+      "bicycling": {
+        "precision": 0.26075574778056,
+        "recall": 0.504625550660793,
+        "f1-score": 0.34383911151133123,
+        "support": 4540.0
+      },
+      "accuracy": 0.35992947187204977,
+      "macro avg": {
+        "precision": 0.3136963900248436,
+        "recall": 0.37364858670133555,
+        "f1-score": 0.29775558015217923,
+        "support": 144056.0
+      },
+      "weighted avg": {
+        "precision": 0.39159537013996953,
+        "recall": 0.35992947187204977,
+        "f1-score": 0.34882936308779244,
+        "support": 144056.0
+      }
+    }
+  },
+  "n_train": 404994,
+  "n_validation": 109164,
+  "n_test": 144056,
+  "available_modalities": [
+    "accelerometer",
+    "gyroscope"
+  ]
+}

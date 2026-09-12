@@ -57,3 +57,16 @@ def test_validator_rejects_unsupported_modality_and_channels():
     payload["channels"] = ["Acc Y"]
     with pytest.raises(GroundingError):
         validate_generated_answer(payload, accelerometer_only)
+
+
+def test_validator_canonicalizes_modality_enum_case():
+    payload = {
+        "answer": "Yes",
+        "activity_event": "Strenuous activity",
+        "timestamps": [[5.0, 8.0]],
+        "modality": "Both",
+        "channels": ["All"],
+        "explanation": "The supplied running interval supports the answer.",
+    }
+    answer = validate_generated_answer(payload, _intervals())
+    assert answer.modality == "both"

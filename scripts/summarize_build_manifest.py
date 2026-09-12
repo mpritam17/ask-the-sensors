@@ -44,6 +44,12 @@ def summarize(path: Path) -> dict:
         "source": "official ExtraSensory raw-measurement build manifest",
         "source_manifest_sha256": hashlib.sha256(raw).hexdigest(),
         "users": len(reports),
+        "users_with_usable_windows": sum(
+            int(report.get("n_windows_valid", 0)) > 0 for report in reports
+        ),
+        "users_without_usable_windows": sum(
+            int(report.get("n_windows_valid", 0)) == 0 for report in reports
+        ),
         "modalities": sorted({str(report.get("modalities", "both")) for report in reports}),
         "users_with_accelerometer_unit_rescaling": sum(
             bool(report.get("unit_rescaled")) for report in reports

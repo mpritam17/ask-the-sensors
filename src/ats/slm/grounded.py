@@ -43,7 +43,12 @@ def validate_generated_answer(
     answer = str(payload["answer"]).strip()
     activity_event = str(payload["activity_event"]).strip() or "N/A"
     explanation = str(payload["explanation"]).strip()
-    modality = str(payload["modality"])
+    # Models sometimes vary only the capitalization of a closed enum (for
+    # example, ``Both``). Canonicalize case before applying the allow-list;
+    # unknown values remain invalid.
+    raw_modality = str(payload["modality"]).strip()
+    modality_by_casefold = {item.casefold(): item for item in ALLOWED_MODALITIES}
+    modality = modality_by_casefold.get(raw_modality.casefold(), raw_modality)
     channels = payload["channels"]
     raw_timestamps = payload["timestamps"]
     if not answer or not explanation:
@@ -141,9 +146,9 @@ class GroundedQwen:
         )
         kwargs: Dict[str, object] = {"local_files_only": self.local_files_only}
         if torch.cuda.is_available():
-            kwargs.update({"torch_dtype": torch.float16, "device_map": "auto"})
+            kwargs.update({"dtype": torch.float16, "device_map": "auto"})
         else:
-            kwargs.update({"torch_dtype": torch.float32})
+            kwargs.update({"dtype": torch.float32})
         self._model = AutoModelForCausalLM.from_pretrained(self.model_name, **kwargs)
 
     def answer(self, question: str, intervals: Sequence[ActivityInterval]) -> StructuredAnswer:
